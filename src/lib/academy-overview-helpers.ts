@@ -25,14 +25,7 @@ export function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / MS_DAY);
 }
 
-export function getPresetRangeEnd(): Date {
-  return parseDay("2026-04-15");
-}
-
-export function getPresetStart(
-  preset: OverviewDateRangePreset,
-  end: Date = getPresetRangeEnd(),
-): Date {
+export function getPresetStart(preset: OverviewDateRangePreset, end: Date): Date {
   const map: Record<OverviewDateRangePreset, number> = {
     "Last 30 days": 30,
     "Last 60 days": 60,

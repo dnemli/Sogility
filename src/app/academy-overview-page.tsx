@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import {
-  mockAcademyAssessmentRecords,
+  academyAssessmentRecords,
   overviewAgeGroupOptions,
   overviewDateRangeOptions,
   overviewGenderOptions,
-} from "../data/mock-academy-overview";
+  reportingDateEnd,
+  reportingDateEndLabel,
+} from "../data/training-data";
 import {
   addDays,
   daysBetween,
@@ -15,7 +17,6 @@ import {
   getCohortBandComposition,
   getEngagementSummary,
   getParticipationSeries,
-  getPresetRangeEnd,
   getPresetStart,
   getRepeatAssessmentRate,
   getReturnAfterFirstSeries,
@@ -37,7 +38,7 @@ import type {
   OverviewGranularity,
 } from "../types/academy-overview";
 
-const records = mockAcademyAssessmentRecords;
+const records = academyAssessmentRecords;
 
 function formatPctChange(current: number, prior: number): { text: string; dir: "up" | "down" | "flat" } {
   if (prior === 0 && current === 0) return { text: "No prior activity", dir: "flat" };
@@ -56,7 +57,7 @@ export function AcademyOverviewPage() {
   const [granularity, setGranularity] = useState<OverviewGranularity>("monthly");
   const [cadenceAgeFilter, setCadenceAgeFilter] = useState<string>("All");
 
-  const rangeEnd = getPresetRangeEnd();
+  const rangeEnd = reportingDateEnd;
   const rangeStart = getPresetStart(dateRange, rangeEnd);
 
   const last60Start = addDays(rangeEnd, -60);
@@ -179,7 +180,12 @@ export function AcademyOverviewPage() {
         <InsightPanel insights={insights} />
       </div>
 
-      <EngagementRetentionSection summary={engagement} returnSeries={returnSeries} segments={segments} />
+      <EngagementRetentionSection
+        summary={engagement}
+        returnSeries={returnSeries}
+        segments={segments}
+        dataThroughLabel={reportingDateEndLabel}
+      />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <AvgDaysBetweenAssessments

@@ -20,9 +20,16 @@ type EngagementRetentionSectionProps = {
   summary: EngagementSummary;
   returnSeries: ReturnCohortPoint[];
   segments: ActivitySegment[];
+  /** Latest date present in the training extract (shown on rolling-window cards). */
+  dataThroughLabel?: string;
 };
 
-export function EngagementRetentionSection({ summary, returnSeries, segments }: EngagementRetentionSectionProps) {
+export function EngagementRetentionSection({
+  summary,
+  returnSeries,
+  segments,
+  dataThroughLabel,
+}: EngagementRetentionSectionProps) {
   return (
     <SurfaceCard>
       <div className="flex flex-col gap-8">
@@ -42,7 +49,9 @@ export function EngagementRetentionSection({ summary, returnSeries, segments }: 
             {
               label: "Assessed in last 60 days",
               value: summary.assessedLast60Days.toLocaleString(),
-              hint: "Rolling window ending today (mock anchor date).",
+              hint: dataThroughLabel
+                ? `Rolling 60 days ending ${dataThroughLabel} (latest session in extract).`
+                : "Rolling 60 days from the latest session in the dataset.",
             },
             {
               label: "With repeat assessments",

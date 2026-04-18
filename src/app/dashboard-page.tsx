@@ -10,7 +10,7 @@ import { CohortInsight } from "../components/dashboard/cohort-insight";
 import { StrengthsWeaknesses } from "../components/dashboard/strengths-weaknesses";
 import { SurfaceCard } from "../components/ui/card";
 import { Tabs } from "../components/ui/tabs";
-import { mockDashboardCollection } from "../data/mock-dashboard";
+import { dashboardCollection } from "../data/training-data";
 import type {
   DashboardTab,
   DateRangeOption,
@@ -26,7 +26,7 @@ const dashboardTabs: DashboardTab[] = [
 ];
 
 export function DashboardPage() {
-  const initialPlayer = mockDashboardCollection.players[0];
+  const initialPlayer = dashboardCollection.players[0];
 
   const [selectedPlayerId, setSelectedPlayerId] = useState(initialPlayer.id);
   const [selectedAgeGroup, setSelectedAgeGroup] = useState(initialPlayer.profile.ageGroup);
@@ -36,8 +36,8 @@ export function DashboardPage() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("Overview");
 
   const currentPlayer =
-    mockDashboardCollection.players.find((player) => player.id === selectedPlayerId) ??
-    mockDashboardCollection.players[0];
+    dashboardCollection.players.find((player) => player.id === selectedPlayerId) ??
+    dashboardCollection.players[0];
 
   const selectedCohortName = `${selectedAgeGroup} ${selectedGender} Cohort`;
   const displayProfile: PlayerProfile = {
@@ -49,8 +49,8 @@ export function DashboardPage() {
 
   const handlePlayerChange = (playerId: string) => {
     const nextPlayer =
-      mockDashboardCollection.players.find((player) => player.id === playerId) ??
-      mockDashboardCollection.players[0];
+      dashboardCollection.players.find((player) => player.id === playerId) ??
+      dashboardCollection.players[0];
 
     setSelectedPlayerId(nextPlayer.id);
     setSelectedAgeGroup(nextPlayer.profile.ageGroup);
@@ -84,7 +84,7 @@ export function DashboardPage() {
         ) : (
           <>
             <DashboardHeader
-              dashboardCollection={mockDashboardCollection}
+              dashboardCollection={dashboardCollection}
               displayProfile={displayProfile}
               selectedPlayerId={selectedPlayerId}
               onPlayerChange={handlePlayerChange}
