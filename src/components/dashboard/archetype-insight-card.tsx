@@ -1,4 +1,5 @@
 import { Sparkles } from "lucide-react";
+import { ARCHETYPE_CHART_HEIGHT, ARCHETYPE_CHART_PAD, ARCHETYPE_CHART_WIDTH } from "../../lib/archetype-chart-layout";
 import { SurfaceCard } from "../ui/card";
 import { SectionHeading } from "../ui/section-heading";
 import type { ArchetypePoint, ArchetypeSummary } from "../../types/dashboard";
@@ -14,17 +15,25 @@ function ClusterMap({
   points: ArchetypePoint[];
   playerPoint: ArchetypePoint;
 }) {
-  const w = 560;
-  const h = 400;
-  const pad = 44;
+  const w = ARCHETYPE_CHART_WIDTH;
+  const h = ARCHETYPE_CHART_HEIGHT;
+  const pad = ARCHETYPE_CHART_PAD;
   const plotW = w - pad * 2;
   const plotH = h - pad * 2;
   const midX = pad + plotW / 2;
   const midY = pad + plotH / 2;
+  /** Match visual gap (plot edge ↔ label text) top vs bottom for ~20px axis copy. */
+  const axisLabelGap = 17;
+  const axisLabelTopBaseline = pad - axisLabelGap - 5;
+  const axisLabelBottomBaseline = pad + plotH + axisLabelGap + 14;
 
   return (
     <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-3 sm:p-4">
-      <svg viewBox={`0 0 ${w} ${h}`} className="h-auto w-full min-h-[280px] max-h-[440px]" preserveAspectRatio="xMidYMid meet">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="h-auto w-full min-h-[340px] max-h-[560px] sm:min-h-[380px]"
+        preserveAspectRatio="xMidYMid meet"
+      >
         <defs>
           <linearGradient id="clusterFill" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#d7f3e1" />
@@ -36,12 +45,12 @@ function ClusterMap({
         <line x1={midX} y1={pad} x2={midX} y2={pad + plotH} stroke="#b7c4bc" strokeDasharray="4 6" />
         {points.map((point) => (
           <g key={point.label}>
-            <circle cx={point.x} cy={point.y} r="26" fill={point.color} fillOpacity="0.28" />
+            <circle cx={point.x} cy={point.y} r="28" fill={point.color} fillOpacity="0.28" />
             <text
               x={point.x}
-              y={point.y + 42}
+              y={point.y + 48}
               textAnchor="middle"
-              className="fill-slate-700 text-[12px] font-medium"
+              className="fill-slate-700 text-[16px] font-semibold"
             >
               {point.label}
             </text>
@@ -60,23 +69,33 @@ function ClusterMap({
           />
           <text
             x={playerPoint.x}
-            y={playerPoint.y - 16}
+            y={playerPoint.y - 20}
             textAnchor="middle"
-            className="fill-slate-800 text-[12px] font-semibold"
+            className="fill-slate-800 text-[16px] font-bold"
           >
             {playerPoint.label || "Player"}
           </text>
         </g>
-        <text x={pad + 8} y={pad - 10} className="fill-slate-500 text-[12px] font-medium">
+        <text x={pad + 4} y={axisLabelTopBaseline} className="fill-slate-700 text-[20px] font-bold tracking-tight">
           Explosive direct play
         </text>
-        <text x={w - pad - 8} y={pad - 10} textAnchor="end" className="fill-slate-500 text-[12px] font-medium">
+        <text
+          x={w - pad - 4}
+          y={axisLabelTopBaseline}
+          textAnchor="end"
+          className="fill-slate-700 text-[20px] font-bold tracking-tight"
+        >
           Control and possession
         </text>
-        <text x={pad + 8} y={h - 12} className="fill-slate-500 text-[12px] font-medium">
+        <text x={pad + 4} y={axisLabelBottomBaseline} className="fill-slate-700 text-[20px] font-bold tracking-tight">
           Developmental ceiling
         </text>
-        <text x={w - pad - 8} y={h - 12} textAnchor="end" className="fill-slate-500 text-[12px] font-medium">
+        <text
+          x={w - pad - 4}
+          y={axisLabelBottomBaseline}
+          textAnchor="end"
+          className="fill-slate-700 text-[20px] font-bold tracking-tight"
+        >
           All-around polish
         </text>
       </svg>

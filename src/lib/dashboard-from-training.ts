@@ -20,6 +20,7 @@ import {
   pcaTwoComponents,
   scaleToCanvas,
 } from "./pca-kmeans";
+import { ARCHETYPE_CHART_HEIGHT, ARCHETYPE_CHART_PAD, ARCHETYPE_CHART_WIDTH } from "./archetype-chart-layout";
 import { playerKey } from "./training-session-csv";
 
 const ARCHETYPE_COLS = [
@@ -42,6 +43,21 @@ function archetypeMixFromVector(v: number[]): Record<(typeof ARCHETYPE_COLS)[num
 }
 
 /** Matches Analysis/cluster.py: for each cluster index in order, take highest archetype score not yet used. */
+function recommendationsForArchetype(primary: string): string {
+  switch (primary) {
+    case "Playmaker":
+      return "Lean into small-sided play that rewards scanning and quick combinations; schedule extra passing and vision reps so choices stay sharp when the game speeds up.";
+    case "Explosive Athlete":
+      return "Keep jump/sprint exposure in the weekly plan, then chain into 1v1 and transition drills so athleticism shows up with the ball.";
+    case "Attacker":
+      return "Prioritize finishing, 1v1 duels, and direct runs; use sessions that pair first touch with acceleration and end with shots or box entries.";
+    case "Control / Possession":
+      return "Use rondos and receive-to-play progressions; reward patience in tight spaces and cue when to break lines versus reset the rhythm.";
+    default:
+      return "Rotate emphasis across dribbling, passing, vision, agility, and first touch each week so the profile reflects balanced, intentional work.";
+  }
+}
+
 function assignClusterArchetypes(centers: number[][]): string[] {
   const k = centers.length;
   const names: string[] = [];
@@ -165,7 +181,7 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
   });
 
   const allPts: [number, number][] = [...scores, ...centerPCs];
-  const scaledAll = scaleToCanvas(allPts, 560, 400, 56);
+  const scaledAll = scaleToCanvas(allPts, ARCHETYPE_CHART_WIDTH, ARCHETYPE_CHART_HEIGHT, ARCHETYPE_CHART_PAD);
   const scaledPlayers = scaledAll.slice(0, n);
   const scaledCenters = scaledAll.slice(n);
 
@@ -176,8 +192,8 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
     if (!pts.length) {
       return {
         label,
-        x: scaledCenters[c]?.x ?? 280,
-        y: scaledCenters[c]?.y ?? 200,
+        x: scaledCenters[c]?.x ?? ARCHETYPE_CHART_WIDTH / 2,
+        y: scaledCenters[c]?.y ?? ARCHETYPE_CHART_HEIGHT / 2,
         color: CLUSTER_COLORS[c % CLUSTER_COLORS.length]!,
       };
     }
@@ -212,7 +228,7 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
       },
       traits: [
         { label: "Cluster", value: `Assigned to “${primary}” from RPS skill space.` },
-        { label: "Projection", value: "PC1 / PC2 spread players using covariance of the five ability means." },
+        { label: "Recommendations", value: recommendationsForArchetype(primary) },
       ],
     });
   }
