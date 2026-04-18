@@ -54,3 +54,11 @@ export function mapAssessmentToAbility(category: string, drill: string): Ability
   const key = categoryDrillAssessmentKey(category, drill);
   return MAP[key] ?? null;
 }
+
+/** Assessment keys (category + drill label) that contribute to an ability — for empty-state guidance. */
+export function assessmentLabelsForAbility(ability: AbilityName): string[] {
+  return Object.entries(MAP)
+    .filter(([, a]) => a === ability)
+    .map(([label]) => label)
+    .sort((a, b) => a.localeCompare(b));
+}
