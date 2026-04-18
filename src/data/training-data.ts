@@ -23,6 +23,12 @@ export const reportingDateEnd = trainingSessionRows.reduce(
   trainingSessionRows[0]!.sessionDate,
 );
 
+/** Earliest session date in `training_session.csv` — used for the “Full data (CSV)” overview range. */
+export const reportingDateStart = trainingSessionRows.reduce(
+  (min, r) => (r.sessionDate < min ? r.sessionDate : min),
+  trainingSessionRows[0]!.sessionDate,
+);
+
 export const reportingDateEndLabel = reportingDateEnd.toLocaleDateString("en-US", {
   month: "short",
   day: "numeric",
@@ -38,6 +44,7 @@ export const overviewAgeGroupOptions = ["All", ...[...tierSet].sort()] as const;
 export const overviewGenderOptions = ["All", "Female", "Male"] as const;
 
 export const overviewDateRangeOptions = [
+  "Full data (CSV)",
   "Last 30 days",
   "Last 60 days",
   "Last 90 days",

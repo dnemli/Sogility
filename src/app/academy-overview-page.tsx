@@ -5,7 +5,7 @@ import {
   overviewDateRangeOptions,
   overviewGenderOptions,
   reportingDateEnd,
-  reportingDateEndLabel,
+  reportingDateStart,
 } from "../data/training-data";
 import {
   addDays,
@@ -51,30 +51,40 @@ function formatPctChange(current: number, prior: number): { text: string; dir: "
 }
 
 export function AcademyOverviewPage() {
-  const [dateRange, setDateRange] = useState<OverviewDateRangePreset>("Last 90 days");
+  const [dateRange, setDateRange] = useState<OverviewDateRangePreset>("Full data (CSV)");
   const [ageGroup, setAgeGroup] = useState<string>("All");
   const [gender, setGender] = useState<GenderFilter>("All");
   const [granularity, setGranularity] = useState<OverviewGranularity>("monthly");
   const [cadenceAgeFilter, setCadenceAgeFilter] = useState<string>("All");
 
   const rangeEnd = reportingDateEnd;
-  const rangeStart = getPresetStart(dateRange, rangeEnd);
+  const rangeStart = getPresetStart(dateRange, rangeEnd, reportingDateStart);
 
-  const last60Start = addDays(rangeEnd, -60);
+  const periodLabel = useMemo(
+    () =>
+      `${rangeStart.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${rangeEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
+    [rangeStart, rangeEnd],
+  );
+
+  const filterLabel = useMemo(() => {
+    const parts: string[] = [];
+    parts.push(ageGroup === "All" ? "All age groups" : ageGroup);
+    parts.push(gender === "All" ? "All genders" : gender);
+    return parts.join(" · ");
+  }, [ageGroup, gender]);
 
   const kpis = useMemo(() => {
     const totalPlayers = getTotalPlayersInSystem(records, ageGroup, gender);
 
-    const active60 = getActiveAssessedPlayers(records, ageGroup, gender, last60Start, rangeEnd);
-    const prior60End = addDays(last60Start, -1);
-    const prior60Start = addDays(prior60End, -60);
-    const active60Prior = getActiveAssessedPlayers(records, ageGroup, gender, prior60Start, prior60End);
-    const activeTrend = formatPctChange(active60, active60Prior);
-
-    const repeatRate = getRepeatAssessmentRate(records, ageGroup, gender, rangeStart, rangeEnd);
     const lenInclusive = daysBetween(rangeStart, rangeEnd) + 1;
     const priorRangeEnd = addDays(rangeStart, -1);
     const priorRangeStart = addDays(priorRangeEnd, -(lenInclusive - 1));
+
+    const activeInRange = getActiveAssessedPlayers(records, ageGroup, gender, rangeStart, rangeEnd);
+    const activePrior = getActiveAssessedPlayers(records, ageGroup, gender, priorRangeStart, priorRangeEnd);
+    const activeTrend = formatPctChange(activeInRange, activePrior);
+
+    const repeatRate = getRepeatAssessmentRate(records, ageGroup, gender, rangeStart, rangeEnd);
     const repeatPrior = getRepeatAssessmentRate(records, ageGroup, gender, priorRangeStart, priorRangeEnd);
     const repeatTrend = formatPctChange(repeatRate * 100, repeatPrior * 100);
 
@@ -84,22 +94,22 @@ export function AcademyOverviewPage() {
       {
         label: "Total players in system",
         value: totalPlayers.toLocaleString(),
-        description: "Unique players in the filtered roster (age/gender filters apply).",
+        description: "Players in the roster for your age and gender filters (all dates).",
         changeText: "Full roster scope",
         changeDirection: "flat" as const,
       },
       {
-        label: "Active assessed players",
-        value: active60.toLocaleString(),
-        description: "Unique players with at least one assessment in the last 60 days (rolling).",
+        label: "Players active this period",
+        value: activeInRange.toLocaleString(),
+        description: "Had at least one assessment in the selected date range (matches the chart).",
         changeText: activeTrend.text,
         changeDirection: activeTrend.dir,
       },
       {
-        label: "Repeat assessment rate",
+        label: "Share with 2+ assessments",
         value: `${(repeatRate * 100).toFixed(1)}%`,
         description:
-          "Share of players active in the selected window with more than one assessment on file (participation proxy).",
+          "Of players active this period, percent who have more than one assessment on file anywhere in history.",
         changeText: repeatTrend.text,
         changeDirection: repeatTrend.dir,
       },
@@ -112,7 +122,7 @@ export function AcademyOverviewPage() {
         changeDirection: "flat" as const,
       },
     ];
-  }, [ageGroup, gender, dateRange, last60Start, rangeEnd, rangeStart]);
+  }, [ageGroup, gender, dateRange, rangeEnd, rangeStart]);
 
   const participation = useMemo(
     () => getParticipationSeries(records, ageGroup, gender, rangeStart, rangeEnd, granularity),
@@ -120,8 +130,8 @@ export function AcademyOverviewPage() {
   );
 
   const engagement = useMemo(
-    () => getEngagementSummary(records, ageGroup, gender, rangeEnd),
-    [ageGroup, gender, rangeEnd],
+    () => getEngagementSummary(records, ageGroup, gender, rangeStart, rangeEnd),
+    [ageGroup, gender, rangeStart, rangeEnd],
   );
 
   const returnSeries = useMemo(() => getReturnAfterFirstSeries(records, ageGroup, gender), [ageGroup, gender]);
@@ -152,8 +162,20 @@ export function AcademyOverviewPage() {
       ageDistribution,
       repeatRatePct: repeatRate * 100,
       activePlayers,
+      periodLabel,
+      filterLabel,
     });
-  }, [ageDistribution, ageGroup, gender, participation, returnSeries, rangeEnd, rangeStart]);
+  }, [
+    ageDistribution,
+    ageGroup,
+    filterLabel,
+    gender,
+    participation,
+    periodLabel,
+    returnSeries,
+    rangeEnd,
+    rangeStart,
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -184,7 +206,7 @@ export function AcademyOverviewPage() {
         summary={engagement}
         returnSeries={returnSeries}
         segments={segments}
-        dataThroughLabel={reportingDateEndLabel}
+        periodLabel={periodLabel}
       />
 
       <div className="grid gap-6 xl:grid-cols-2">

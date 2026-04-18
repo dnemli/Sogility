@@ -25,8 +25,17 @@ export function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / MS_DAY);
 }
 
-export function getPresetStart(preset: OverviewDateRangePreset, end: Date): Date {
-  const map: Record<OverviewDateRangePreset, number> = {
+/**
+ * Start of the overview window. For rolling presets, counts back from `end`.
+ * For `"Full data (CSV)"`, uses the earliest session day in the bundled extract (`datasetFirstDay`).
+ */
+export function getPresetStart(
+  preset: OverviewDateRangePreset,
+  end: Date,
+  datasetFirstDay: Date,
+): Date {
+  if (preset === "Full data (CSV)") return datasetFirstDay;
+  const map: Record<Exclude<OverviewDateRangePreset, "Full data (CSV)">, number> = {
     "Last 30 days": 30,
     "Last 60 days": 60,
     "Last 90 days": 90,
@@ -207,30 +216,30 @@ export function getEngagementSummary(
   records: AcademyAssessmentRecord[],
   ageGroup: string,
   gender: GenderFilter,
-  recentEnd: Date,
+  rangeStart: Date,
+  rangeEnd: Date,
 ): EngagementSummary {
-  const recentStart = addDays(recentEnd, -60);
   const scoped = filterDemographics(records, ageGroup, gender);
   const totalUniquePlayers = new Set(scoped.map((r) => r.player_id)).size;
 
-  const last60 = uniquePlayersInRange(scoped, recentStart, recentEnd);
+  const activeInPeriod = uniquePlayersInRange(scoped, rangeStart, rangeEnd);
   const counts = new Map<string, number>();
   for (const r of scoped) {
     counts.set(r.player_id, (counts.get(r.player_id) ?? 0) + 1);
   }
 
   let multi = 0;
-  for (const id of last60) {
+  for (const id of activeInPeriod) {
     if ((counts.get(id) ?? 0) > 1) multi += 1;
   }
 
-  const repeatAssessmentRate = last60.size === 0 ? 0 : multi / last60.size;
+  const repeatShareOfActive = activeInPeriod.size === 0 ? 0 : multi / activeInPeriod.size;
 
   return {
     totalUniquePlayers,
-    assessedLast60Days: last60.size,
-    assessedMoreThanOnce: multi,
-    repeatAssessmentRate,
+    activeInSelectedPeriod: activeInPeriod.size,
+    activeWithTwoPlusTotal: multi,
+    repeatShareOfActive,
   };
 }
 

@@ -20,15 +20,15 @@ type EngagementRetentionSectionProps = {
   summary: EngagementSummary;
   returnSeries: ReturnCohortPoint[];
   segments: ActivitySegment[];
-  /** Latest date present in the training extract (shown on rolling-window cards). */
-  dataThroughLabel?: string;
+  /** Selected overview date span — same as top KPIs and participation chart. */
+  periodLabel: string;
 };
 
 export function EngagementRetentionSection({
   summary,
   returnSeries,
   segments,
-  dataThroughLabel,
+  periodLabel,
 }: EngagementRetentionSectionProps) {
   return (
     <SurfaceCard>
@@ -42,26 +42,24 @@ export function EngagementRetentionSection({
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
-              label: "Unique players (filtered)",
+              label: "Players in roster (filtered)",
               value: summary.totalUniquePlayers.toLocaleString(),
-              hint: "Players appearing in the filtered dataset.",
+              hint: "Unique players for your age and gender filters (all dates).",
             },
             {
-              label: "Assessed in last 60 days",
-              value: summary.assessedLast60Days.toLocaleString(),
-              hint: dataThroughLabel
-                ? `Rolling 60 days ending ${dataThroughLabel} (latest session in extract).`
-                : "Rolling 60 days from the latest session in the dataset.",
+              label: "Active this period",
+              value: summary.activeInSelectedPeriod.toLocaleString(),
+              hint: `At least one session between ${periodLabel}.`,
             },
             {
-              label: "With repeat assessments",
-              value: summary.assessedMoreThanOnce.toLocaleString(),
-              hint: "Among players active in the last 60 days.",
+              label: "Also have 2+ visits on file",
+              value: summary.activeWithTwoPlusTotal.toLocaleString(),
+              hint: "Of players active this period, how many have more than one assessment recorded overall.",
             },
             {
-              label: "Repeat assessment rate",
-              value: `${(summary.repeatAssessmentRate * 100).toFixed(1)}%`,
-              hint: "Share of last-60-day players with >1 assessment on file.",
+              label: "Share with 2+ assessments",
+              value: `${(summary.repeatShareOfActive * 100).toFixed(1)}%`,
+              hint: "Of players active this period, percent with more than one assessment on file.",
             },
           ].map((card) => (
             <div

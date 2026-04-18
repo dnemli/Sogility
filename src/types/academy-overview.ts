@@ -18,6 +18,7 @@ export type AcademyPerformanceBand =
   | "Elite";
 
 export type OverviewDateRangePreset =
+  | "Full data (CSV)"
   | "Last 30 days"
   | "Last 60 days"
   | "Last 90 days"
@@ -44,9 +45,12 @@ export type ParticipationPoint = {
 
 export type EngagementSummary = {
   totalUniquePlayers: number;
-  assessedLast60Days: number;
-  assessedMoreThanOnce: number;
-  repeatAssessmentRate: number;
+  /** Unique players with ≥1 assessment in the selected overview date range. */
+  activeInSelectedPeriod: number;
+  /** Among those, count with >1 assessment row on file (full history in filtered cohort). */
+  activeWithTwoPlusTotal: number;
+  /** activeWithTwoPlusTotal / activeInSelectedPeriod (0–1). */
+  repeatShareOfActive: number;
 };
 
 export type ReturnCohortPoint = {

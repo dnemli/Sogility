@@ -46,16 +46,19 @@ export function ParticipationOverTimeChart({
           </label>
         </div>
 
-        <div className="h-[300px] w-full min-w-0">
+        <div className="h-[360px] w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 8 }}>
               <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.28)" />
               <XAxis
                 dataKey="label"
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                angle={-45}
+                textAnchor="end"
+                height={72}
                 interval={granularity === "weekly" ? "preserveStartEnd" : 0}
+                tick={{ fill: "#64748b", fontSize: 11 }}
               />
               <YAxis
                 allowDecimals={false}
