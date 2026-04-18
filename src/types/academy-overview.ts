@@ -10,7 +10,12 @@ export type AcademyAssessmentRecord = {
   assessment_score: number;
 };
 
-export type AcademyPerformanceBand = "Foundation" | "Developing" | "Elite";
+export type AcademyPerformanceBand =
+  | "Foundation"
+  | "Developing"
+  | "Approaching"
+  | "Strong"
+  | "Elite";
 
 export type OverviewDateRangePreset =
   | "Last 30 days"
@@ -74,6 +79,8 @@ export type CohortBandRow = {
   cohort: string;
   Foundation: number;
   Developing: number;
+  Approaching: number;
+  Strong: number;
   Elite: number;
   total: number;
 };

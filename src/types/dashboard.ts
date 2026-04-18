@@ -12,12 +12,15 @@ export type SkillFilterOption =
   | "Speed & Agility"
   | "Explosiveness";
 
+/** Five academy abilities (Analysis/preprocessing_scoring_archetype.ipynb + cluster.py). */
+export type AbilityName = "Dribbling" | "Passing" | "Vision" | "Agility" | "First Touch";
+
 export type DateRangeOption = "Last 6 sessions" | "Last 12 months" | "Full history";
-export type DashboardTab =
-  | "Overview"
-  | "Assessment Breakdown"
-  | "Cohort Comparison"
-  | "Progress Over Time";
+
+export type DashboardMainTab = "Overview" | "Assessment Breakdown";
+
+/** Shown only when the main tab is Assessment Breakdown. */
+export type AssessmentSubTab = "Abilities" | "Cohort comparison" | "Progress over time";
 
 export type PlayerScoreRecord = {
   player_name: string;
@@ -49,11 +52,10 @@ export type SummaryMetric = {
   changeDirection: TrendDirection;
 };
 
+/** Monthly trend for cohort-relative standing (RPS-style mean). */
 export type ProgressPoint = {
   label: string;
-  aps: number;
   rps: number;
-  percentile: number;
 };
 
 export type DistributionBin = {
@@ -70,7 +72,7 @@ export type CohortDistribution = {
 
 export type AssessmentRow = {
   assessmentName: string;
-  category: Exclude<SkillFilterOption, "All assessments">;
+  ability: AbilityName;
   apsScore: number;
   rpsScore: number;
   percentile: number;
@@ -78,6 +80,13 @@ export type AssessmentRow = {
   changeText: string;
   changeDirection: TrendDirection;
   latestSessionLabel: string;
+};
+
+export type AbilityBreakdownRow = {
+  ability: AbilityName;
+  avgAps: number;
+  aggregateBand: PerformanceBand;
+  tests: AssessmentRow[];
 };
 
 export type ArchetypePoint = {
@@ -113,7 +122,9 @@ export type PlayerDashboardView = {
   summaryMetrics: SummaryMetric[];
   progressTrend: ProgressPoint[];
   cohortDistribution: CohortDistribution;
+  /** Per-test rows (derived from CSV); nested under abilities in the UI. */
   assessmentBreakdown: AssessmentRow[];
+  abilityBreakdown: AbilityBreakdownRow[];
   archetype: ArchetypeSummary;
   strengths: string[];
   improvements: string[];
@@ -121,9 +132,5 @@ export type PlayerDashboardView = {
 };
 
 export type DashboardCollection = {
-  ageGroups: string[];
-  genders: string[];
-  skillFilters: SkillFilterOption[];
-  dateRanges: DateRangeOption[];
   players: PlayerDashboardView[];
 };

@@ -48,7 +48,9 @@ export function CohortPerformanceComposition({ rows }: CohortPerformanceComposit
               <Legend />
               <Bar dataKey="Foundation" stackId="b" fill="#fb7185" radius={[0, 0, 0, 0]} />
               <Bar dataKey="Developing" stackId="b" fill="#fbbf24" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="Elite" stackId="b" fill="#7c3aed" radius={[10, 10, 0, 0]} />
+              <Bar dataKey="Approaching" stackId="b" fill="#bef264" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="Strong" stackId="b" fill="#38bdf8" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="Elite" stackId="b" fill="#a78bfa" radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

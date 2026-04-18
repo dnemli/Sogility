@@ -1,48 +1,20 @@
 import { CalendarRange, ShieldCheck, Target, Users } from "lucide-react";
-import { FilterBar } from "./filter-bar";
+import { PlayerSearch } from "./player-search";
 import { SurfaceCard } from "../ui/card";
-import type {
-  DashboardCollection,
-  DateRangeOption,
-  PlayerProfile,
-  SkillFilterOption,
-} from "../../types/dashboard";
+import type { DashboardCollection, PlayerProfile } from "../../types/dashboard";
 
 type DashboardHeaderProps = {
   dashboardCollection: DashboardCollection;
   displayProfile: PlayerProfile;
   selectedPlayerId: string;
   onPlayerChange: (playerId: string) => void;
-  selectedAgeGroup: string;
-  onAgeGroupChange: (ageGroup: string) => void;
-  selectedGender: string;
-  onGenderChange: (gender: string) => void;
-  selectedSkill: SkillFilterOption;
-  onSkillChange: (skill: SkillFilterOption) => void;
-  selectedDateRange: DateRangeOption;
-  onDateRangeChange: (range: DateRangeOption) => void;
 };
-
-const metaItems = [
-  { icon: Users, label: "Age group", key: "ageGroup" },
-  { icon: ShieldCheck, label: "Gender", key: "gender" },
-  { icon: Target, label: "Selected cohort", key: "cohortName" },
-  { icon: CalendarRange, label: "Tracking window", key: "trackingWindow" },
-] as const;
 
 export function DashboardHeader({
   dashboardCollection,
   displayProfile,
   selectedPlayerId,
   onPlayerChange,
-  selectedAgeGroup,
-  onAgeGroupChange,
-  selectedGender,
-  onGenderChange,
-  selectedSkill,
-  onSkillChange,
-  selectedDateRange,
-  onDateRangeChange,
 }: DashboardHeaderProps) {
   return (
     <SurfaceCard className="relative overflow-hidden bg-gradient-to-br from-panel via-white/95 to-emerald-50/70">
@@ -55,7 +27,7 @@ export function DashboardHeader({
               Soccer Academy Analytics
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-              Player Performance Dashboard
+              {displayProfile.playerName}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
               A clear view of how each player is performing against academy benchmarks and against similar players in their cohort.
@@ -76,42 +48,51 @@ export function DashboardHeader({
             </div>
           </div>
 
-          <FilterBar
-            dashboardCollection={dashboardCollection}
+          <PlayerSearch
+            players={dashboardCollection.players}
             selectedPlayerId={selectedPlayerId}
-            onPlayerChange={onPlayerChange}
-            selectedAgeGroup={selectedAgeGroup}
-            onAgeGroupChange={onAgeGroupChange}
-            selectedGender={selectedGender}
-            onGenderChange={onGenderChange}
-            selectedSkill={selectedSkill}
-            onSkillChange={onSkillChange}
-            selectedDateRange={selectedDateRange}
-            onDateRangeChange={onDateRangeChange}
+            onSelectPlayer={onPlayerChange}
           />
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {metaItems.map(({ icon: Icon, label, key }) => (
-            <div
-              key={label}
-              className="rounded-[22px] border border-white/70 bg-white/70 p-4 shadow-sm backdrop-blur"
-            >
-              <div className="flex items-center gap-3">
-                <span className="rounded-2xl bg-emerald-100 p-2 text-emerald-700">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-base font-semibold text-slate-900">
-                    {displayProfile[key]}
-                  </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-[22px] border border-white/70 bg-white/70 p-4 shadow-sm backdrop-blur">
+            <div className="flex items-start gap-3">
+              <span className="rounded-2xl bg-emerald-100 p-2 text-emerald-700">
+                <Users className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Age & history</p>
+                <p className="mt-2 text-base font-semibold text-slate-900">{displayProfile.ageGroup}</p>
+                <div className="mt-3 flex items-start gap-2 border-t border-slate-200/80 pt-3">
+                  <CalendarRange className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tracking window</p>
+                    <p className="mt-1 text-sm font-medium text-slate-800">{displayProfile.trackingWindow}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
+          </div>
+
+          <div className="rounded-[22px] border border-white/70 bg-white/70 p-4 shadow-sm backdrop-blur">
+            <div className="flex items-start gap-3">
+              <span className="rounded-2xl bg-emerald-100 p-2 text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Gender & cohort</p>
+                <p className="mt-2 text-base font-semibold text-slate-900">{displayProfile.gender}</p>
+                <div className="mt-3 flex items-start gap-2 border-t border-slate-200/80 pt-3">
+                  <Target className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Cohort label</p>
+                    <p className="mt-1 text-sm font-medium leading-snug text-slate-800">{displayProfile.cohortName}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </SurfaceCard>

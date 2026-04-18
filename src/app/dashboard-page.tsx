@@ -11,75 +11,82 @@ import { StrengthsWeaknesses } from "../components/dashboard/strengths-weaknesse
 import { SurfaceCard } from "../components/ui/card";
 import { Tabs } from "../components/ui/tabs";
 import { dashboardCollection } from "../data/training-data";
-import type {
-  DashboardTab,
-  DateRangeOption,
-  PlayerProfile,
-  SkillFilterOption,
-} from "../types/dashboard";
+import { cn } from "../lib/utils";
+import type { AssessmentSubTab, DashboardMainTab, PlayerProfile } from "../types/dashboard";
 
-const dashboardTabs: DashboardTab[] = [
-  "Overview",
-  "Assessment Breakdown",
-  "Cohort Comparison",
-  "Progress Over Time",
+const mainTabs: DashboardMainTab[] = ["Overview", "Assessment Breakdown"];
+
+const assessmentSubTabs: AssessmentSubTab[] = [
+  "Abilities",
+  "Cohort comparison",
+  "Progress over time",
 ];
+
+/** Trailing window on the monthly RPS series (each point is a month with sessions). */
+const PROGRESS_POINTS = 6;
 
 export function DashboardPage() {
   const initialPlayer = dashboardCollection.players[0];
 
   const [selectedPlayerId, setSelectedPlayerId] = useState(initialPlayer.id);
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState(initialPlayer.profile.ageGroup);
-  const [selectedGender, setSelectedGender] = useState(initialPlayer.profile.gender);
-  const [selectedSkill, setSelectedSkill] = useState<SkillFilterOption>("All assessments");
-  const [selectedDateRange, setSelectedDateRange] = useState<DateRangeOption>("Last 6 sessions");
-  const [activeTab, setActiveTab] = useState<DashboardTab>("Overview");
+  const [mainTab, setMainTab] = useState<DashboardMainTab>("Overview");
+  const [assessmentSub, setAssessmentSub] = useState<AssessmentSubTab>("Abilities");
 
   const currentPlayer =
     dashboardCollection.players.find((player) => player.id === selectedPlayerId) ??
     dashboardCollection.players[0];
 
-  const selectedCohortName = `${selectedAgeGroup} ${selectedGender} Cohort`;
-  const displayProfile: PlayerProfile = {
-    ...currentPlayer.profile,
-    ageGroup: selectedAgeGroup,
-    gender: selectedGender,
-    cohortName: selectedCohortName,
-  };
+  const displayProfile: PlayerProfile = currentPlayer.profile;
 
   const handlePlayerChange = (playerId: string) => {
-    const nextPlayer =
+    const next =
       dashboardCollection.players.find((player) => player.id === playerId) ??
       dashboardCollection.players[0];
-
-    setSelectedPlayerId(nextPlayer.id);
-    setSelectedAgeGroup(nextPlayer.profile.ageGroup);
-    setSelectedGender(nextPlayer.profile.gender);
+    setSelectedPlayerId(next.id);
   };
 
-  const filteredAssessments =
-    selectedSkill === "All assessments"
-      ? currentPlayer.assessmentBreakdown
-      : currentPlayer.assessmentBreakdown.filter(
-          (assessment) => assessment.category === selectedSkill,
-        );
-
-  const trendPointCount = selectedDateRange === "Last 6 sessions" ? 6 : currentPlayer.progressTrend.length;
-  const visibleTrend = currentPlayer.progressTrend.slice(-trendPointCount);
-  const latestPercentile =
-    currentPlayer.progressTrend[currentPlayer.progressTrend.length - 1]?.percentile ?? 0;
+  const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
+  const latestRps =
+    currentPlayer.progressTrend.length > 0
+      ? (currentPlayer.progressTrend[currentPlayer.progressTrend.length - 1]?.rps ?? 0)
+      : 0;
   const derivedInsight = {
     ...currentPlayer.cohortInsight,
     comparisonGroup: `${displayProfile.playerName} is being compared against ${displayProfile.ageGroup} ${displayProfile.gender.toLowerCase()} players who completed the same academy assessment set.`,
-    plainLanguage: `This player is currently performing above ${latestPercentile}% of players in the same age and gender cohort.`,
+    plainLanguage: `This player’s latest monthly cohort-relative standing (RPS-style) is near ${latestRps.toFixed(1)} on the 0–100 scale vs peers in the same tier and gender.`,
   };
 
   return (
     <main className="min-h-screen px-4 py-6 text-ink sm:px-6 lg:px-10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <Tabs tabs={dashboardTabs} activeTab={activeTab} onChange={setActiveTab} />
+        <Tabs tabs={mainTabs} activeTab={mainTab} onChange={setMainTab} />
 
-        {activeTab === "Overview" ? (
+        {mainTab === "Assessment Breakdown" ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Assessment views
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {assessmentSubTabs.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setAssessmentSub(t)}
+                  className={cn(
+                    "rounded-full border px-3.5 py-2 text-xs font-semibold transition sm:text-sm",
+                    assessmentSub === t
+                      ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-900/15"
+                      : "border-slate-200/90 bg-white/80 text-slate-600 hover:border-slate-300 hover:text-slate-900",
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {mainTab === "Overview" ? (
           <AcademyOverviewPage />
         ) : (
           <>
@@ -88,57 +95,45 @@ export function DashboardPage() {
               displayProfile={displayProfile}
               selectedPlayerId={selectedPlayerId}
               onPlayerChange={handlePlayerChange}
-              selectedAgeGroup={selectedAgeGroup}
-              onAgeGroupChange={setSelectedAgeGroup}
-              selectedGender={selectedGender}
-              onGenderChange={setSelectedGender}
-              selectedSkill={selectedSkill}
-              onSkillChange={setSelectedSkill}
-              selectedDateRange={selectedDateRange}
-              onDateRangeChange={setSelectedDateRange}
             />
 
             <KpiSection metrics={currentPlayer.summaryMetrics} />
 
-            {activeTab === "Progress Over Time" && (
+            {assessmentSub === "Progress over time" ? (
               <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
                 <ProgressTrendChart
-                  title="Score progression across recent sessions"
-                  description="Track how benchmark fit and cohort standing are trending over repeated training sessions."
+                  title="Cohort-relative standing over time"
+                  description="Mean cohort drill percentile by month (RPS-style), for each month this player has sessions. Higher values indicate stronger standing vs same-tier peers in that month."
                   points={visibleTrend}
-                  dateRangeLabel={selectedDateRange}
                 />
                 <DistributionChart
                   title="Cohort distribution snapshot"
-                  description="See where this player sits inside the current peer distribution."
+                  description="Where this player’s composite mean percentile sits within the peer distribution."
                   distribution={{
                     ...currentPlayer.cohortDistribution,
                     cohortLabel: displayProfile.cohortName,
                   }}
-                  selectedAssessment={selectedSkill}
                 />
               </section>
-            )}
+            ) : null}
 
-            {activeTab === "Assessment Breakdown" && (
-              <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-                <AssessmentBreakdown
-                  assessments={filteredAssessments}
-                  selectedSkill={selectedSkill}
-                  playerName={currentPlayer.profile.playerName}
+            {assessmentSub === "Abilities" ? (
+              <>
+                <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+                  <AssessmentBreakdown
+                    abilities={currentPlayer.abilityBreakdown}
+                    playerName={currentPlayer.profile.playerName}
+                  />
+                  <ArchetypeInsightCard archetype={currentPlayer.archetype} />
+                </section>
+                <StrengthsWeaknesses
+                  strengths={currentPlayer.strengths}
+                  improvements={currentPlayer.improvements}
                 />
-                <ArchetypeInsightCard archetype={currentPlayer.archetype} />
-              </section>
-            )}
+              </>
+            ) : null}
 
-            {activeTab === "Assessment Breakdown" && (
-              <StrengthsWeaknesses
-                strengths={currentPlayer.strengths}
-                improvements={currentPlayer.improvements}
-              />
-            )}
-
-            {activeTab === "Cohort Comparison" && (
+            {assessmentSub === "Cohort comparison" ? (
               <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                 <CohortInsight insight={derivedInsight} />
                 <SurfaceCard className="overflow-hidden">
@@ -174,7 +169,7 @@ export function DashboardPage() {
                   </div>
                 </SurfaceCard>
               </section>
-            )}
+            ) : null}
           </>
         )}
       </div>

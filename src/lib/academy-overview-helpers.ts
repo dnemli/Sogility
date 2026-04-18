@@ -386,6 +386,8 @@ export function getCohortBandComposition(
         cohort: r.cohort,
         Foundation: 0,
         Developing: 0,
+        Approaching: 0,
+        Strong: 0,
         Elite: 0,
         total: 0,
       } satisfies CohortBandRow);

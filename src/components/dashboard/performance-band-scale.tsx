@@ -13,32 +13,37 @@ export function PerformanceBandScale({
   const markerPosition = `${Math.max(4, Math.min(96, apsScore))}%`;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
+    <div className="flex min-w-0 flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-slate-700">Benchmark fit</p>
         <span
           className={cn(
-            "rounded-full px-2.5 py-1 text-xs font-semibold",
+            "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
             bandTextMap[performanceBand],
           )}
         >
           {performanceBand}
         </span>
       </div>
-      <div className="relative">
+      <div className="relative w-full min-w-[min(100%,22rem)]">
         <div className="grid grid-cols-5 overflow-hidden rounded-full border border-white/80">
           {bandOrder.map((band) => (
-            <div key={band} className={cn("h-4", bandColorMap[band])} />
+            <div key={band} className={cn("h-6 sm:h-7", bandColorMap[band])} />
           ))}
         </div>
         <div
-          className="absolute top-1/2 h-6 w-6 -translate-y-1/2 -translate-x-1/2 rounded-full border-4 border-slate-950 bg-white shadow-lg"
+          className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-slate-950 bg-white shadow-md sm:h-6 sm:w-6"
           style={{ left: markerPosition }}
         />
       </div>
-      <div className="grid grid-cols-5 gap-1 text-[11px] font-medium text-slate-500">
+      <div className="flex w-full gap-1.5 px-0.5 sm:gap-2">
         {bandOrder.map((band) => (
-          <span key={band}>{band}</span>
+          <span
+            key={band}
+            className="min-w-0 flex-1 text-center text-[9px] font-medium leading-tight text-slate-500 sm:text-[10px]"
+          >
+            {band}
+          </span>
         ))}
       </div>
     </div>

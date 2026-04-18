@@ -16,27 +16,17 @@ type DistributionChartProps = {
   title: string;
   description: string;
   distribution: CohortDistribution;
-  selectedAssessment: string;
 };
 
-export function DistributionChart({
-  title,
-  description,
-  distribution,
-  selectedAssessment,
-}: DistributionChartProps) {
+export function DistributionChart({ title, description, distribution }: DistributionChartProps) {
   return (
     <SurfaceCard className="h-full">
       <div className="flex h-full flex-col gap-6">
         <div className="flex flex-col gap-3">
-          <SectionHeading
-            eyebrow="Peer Distribution"
-            title={title}
-            description={description}
-          />
+          <SectionHeading eyebrow="Peer Distribution" title={title} description={description} />
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
-              Focus: {selectedAssessment}
+              Composite mean percentile
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
               Player marker: {distribution.playerScore}
@@ -69,12 +59,12 @@ export function DistributionChart({
               <ReferenceLine
                 x={distribution.playerScore}
                 stroke="#d9485f"
-                strokeWidth={2.5}
+                strokeWidth={1.5}
                 label={{
                   value: "Player",
                   position: "insideTopRight",
                   fill: "#d9485f",
-                  fontSize: 12,
+                  fontSize: 9,
                 }}
               />
             </ComposedChart>
@@ -92,7 +82,7 @@ export function DistributionChart({
           <div>
             <p className="text-sm font-medium text-slate-500">What this shows</p>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              The red marker shows where the player sits compared with the current cohort spread.
+              The marker shows where this player’s composite mean sits in the cohort distribution from the training log.
             </p>
           </div>
         </div>
