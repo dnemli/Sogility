@@ -12,20 +12,20 @@ export function App() {
   const initialPlayer = dashboardCollection.players[0];
   const [activeRole, setActiveRole] = useState<RoleView>("Trainer View");
   const [selectedPlayerId, setSelectedPlayerId] = useState(initialPlayer.id);
-  const isParentView = activeRole === "Parent/Player View";
+  const isDarkApp = true;
 
   return (
     <main
       className={cn(
         "min-h-screen px-4 py-6 text-ink sm:px-6 lg:px-10",
-        isParentView ? "bg-[#0F1923] text-[#E0E8F0]" : "",
+        isDarkApp ? "bg-[#0F1923] text-[#E0E8F0]" : "",
       )}
     >
-      <div className={cn("mx-auto flex w-full max-w-7xl flex-col gap-6", isParentView ? "max-w-screen-sm" : "")}>
+      <div className={cn("mx-auto flex w-full max-w-7xl flex-col gap-6", activeRole === "Parent/Player View" ? "max-w-screen-sm" : "")}>
         <section
           className={cn(
             "rounded-2xl p-4",
-            isParentView
+            isDarkApp
               ? "border border-[#1E2D40] bg-[#131F2E]"
               : "border border-slate-200 bg-white",
           )}
@@ -33,7 +33,7 @@ export function App() {
           <p
             className={cn(
               "mb-3 text-xs font-semibold uppercase tracking-[0.2em]",
-              isParentView ? "text-[#6A8090]" : "text-slate-500",
+              isDarkApp ? "text-[#6A8090]" : "text-slate-500",
             )}
           >
             Role selector

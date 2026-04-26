@@ -14,7 +14,7 @@ import { SurfaceCard } from "../ui/card";
 import { SectionHeading } from "../ui/section-heading";
 import type { ActivitySegment, EngagementSummary, ReturnCohortPoint } from "../../types/academy-overview";
 
-const PIE_COLORS = ["#94a3b8", "#1d8f5a", "#0f7ac0"];
+const PIE_COLORS = ["#6A8090", "#3ECF8E", "#9AB0C0"];
 
 type EngagementRetentionSectionProps = {
   summary: EngagementSummary;
@@ -64,34 +64,34 @@ export function EngagementRetentionSection({
           ].map((card) => (
             <div
               key={card.label}
-              className="rounded-[22px] border border-slate-200/70 bg-white/85 p-4 shadow-sm"
+              className="rounded-[22px] border border-[#1E2D40] bg-[#0F2236] p-4"
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{card.label}</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950">{card.value}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{card.hint}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6A8090]">{card.label}</p>
+              <p className="mt-3 text-3xl font-semibold text-[#E0E8F0]">{card.value}</p>
+              <p className="mt-2 text-sm leading-6 text-[#9AB0C0]">{card.hint}</p>
             </div>
           ))}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[22px] border border-slate-200/70 bg-white/80 p-4">
+          <div className="rounded-[22px] border border-[#1E2D40] bg-[#0F2236] p-4">
             <div className="mb-4">
-              <p className="text-sm font-semibold text-slate-900">Return after first assessment</p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="text-sm font-semibold text-[#E0E8F0]">Return after first assessment</p>
+              <p className="mt-1 text-sm text-[#9AB0C0]">
                 Share of players with a second assessment within 90 days of their first (by age group).
               </p>
             </div>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={returnSeries} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.28)" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#9AB0C0", fontSize: 12 }} />
                   <YAxis
                     domain={[0, 100]}
                     tickFormatter={(v) => `${v}%`}
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fill: "#64748b", fontSize: 12 }}
+                    tick={{ fill: "#9AB0C0", fontSize: 12 }}
                   />
                   <Tooltip
                     formatter={(value: number, _name, item) => [
@@ -99,16 +99,16 @@ export function EngagementRetentionSection({
                       `Returned (${(item?.payload as ReturnCohortPoint)?.sampleSize ?? 0} eligible)`,
                     ]}
                   />
-                  <Bar dataKey="pctReturned" fill="#0f7ac0" radius={[10, 10, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="pctReturned" fill="#3ECF8E" radius={[10, 10, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-slate-200/70 bg-white/80 p-4">
+          <div className="rounded-[22px] border border-[#1E2D40] bg-[#0F2236] p-4">
             <div className="mb-2">
-              <p className="text-sm font-semibold text-slate-900">Activity segmentation</p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="text-sm font-semibold text-[#E0E8F0]">Activity segmentation</p>
+              <p className="mt-1 text-sm text-[#9AB0C0]">
                 One-time vs returning vs highly active players (total assessments on file).
               </p>
             </div>
@@ -136,18 +136,18 @@ export function EngagementRetentionSection({
                 {segments.map((s, i) => (
                   <div
                     key={s.segment}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white px-3 py-2"
+                    className="flex items-center justify-between rounded-2xl border border-[#1E2D40] bg-[#131F2E] px-3 py-2"
                   >
                     <div className="flex items-center gap-2">
                       <span
                         className="h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
                       />
-                      <span className="text-sm font-medium text-slate-800">{s.segment}</span>
+                      <span className="text-sm font-medium text-[#E0E8F0]">{s.segment}</span>
                     </div>
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-[#E0E8F0]">
                       {s.count}{" "}
-                      <span className="font-normal text-slate-500">({s.pct}%)</span>
+                      <span className="font-normal text-[#9AB0C0]">({s.pct}%)</span>
                     </span>
                   </div>
                 ))}

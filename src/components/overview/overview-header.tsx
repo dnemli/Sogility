@@ -29,14 +29,14 @@ function Field({
 }) {
   return (
     <label className="flex min-w-[140px] flex-col gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6A8090]">
         {label}
       </span>
       <div className="relative">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full min-w-[140px] appearance-none rounded-2xl border border-slate-200/80 bg-white/90 px-4 pr-10 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+          className="h-11 w-full min-w-[140px] appearance-none rounded-2xl border border-[#1E2D40] bg-[#131F2E] px-4 pr-10 text-sm font-medium text-[#E0E8F0] shadow-none outline-none transition focus:border-[#3ECF8E] focus:ring-2 focus:ring-[#3ECF8E]/20"
         >
           {options.map((option) => (
             <option key={option} value={option}>
@@ -44,7 +44,7 @@ function Field({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6A8090]" />
       </div>
     </label>
   );
@@ -64,21 +64,19 @@ export function OverviewHeader({
   genderOptions,
 }: OverviewHeaderProps) {
   return (
-    <SurfaceCard className="relative overflow-hidden bg-gradient-to-br from-panel via-white/95 to-emerald-50/60">
-      <div className="absolute -right-16 top-0 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-40 w-40 rounded-full bg-sky-300/10 blur-3xl" />
+    <SurfaceCard className="relative overflow-hidden bg-[#131F2E]">
       <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700/85">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#6A8090]">
             Academy intelligence
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#E0E8F0] sm:text-[2rem]">
             {title}
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600 sm:text-base">{subtitle}</p>
+          <p className="mt-3 text-sm leading-6 text-[#9AB0C0] sm:text-base">{subtitle}</p>
         </div>
 
-        <div className="flex w-full flex-col gap-3 rounded-[22px] border border-white/80 bg-white/75 p-4 shadow-sm backdrop-blur sm:flex-row sm:flex-wrap sm:items-end sm:justify-end lg:max-w-2xl">
+        <div className="flex w-full flex-col gap-3 rounded-[22px] border border-[#1E2D40] bg-[#0F2236] p-4 shadow-none backdrop-blur sm:flex-row sm:flex-wrap sm:items-end sm:justify-end lg:max-w-2xl">
           <Field
             label="Date range"
             value={dateRange}

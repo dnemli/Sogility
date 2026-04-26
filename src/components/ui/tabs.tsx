@@ -9,7 +9,7 @@ type TabsProps<T extends string> = {
 export function Tabs<T extends string>({ tabs, activeTab, onChange }: TabsProps<T>) {
   return (
     <div className="overflow-x-auto">
-      <div className="inline-flex rounded-full border border-white/70 bg-white/75 p-1 shadow-panel backdrop-blur">
+      <div className="inline-flex rounded-full border border-[#1E2D40] bg-[#131F2E] p-1 shadow-none backdrop-blur">
         {tabs.map((tab) => {
           const isActive = tab === activeTab;
           return (
@@ -20,8 +20,8 @@ export function Tabs<T extends string>({ tabs, activeTab, onChange }: TabsProps<
               className={cn(
                 "rounded-full px-4 py-2.5 text-sm font-medium transition sm:px-5",
                 isActive
-                  ? "bg-slate-900 text-white shadow-lg shadow-slate-900/15"
-                  : "text-slate-600 hover:text-slate-900",
+                  ? "bg-[#3ECF8E] text-[#0F1923] shadow-none"
+                  : "text-[#9AB0C0] hover:text-[#E0E8F0]",
               )}
             >
               {tab}

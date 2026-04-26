@@ -60,7 +60,7 @@ function TrainerFlow({
   const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
 
   return (
-    <div className="flex flex-col gap-6">
+    <section className="mx-auto flex w-full max-w-screen-sm flex-col gap-6">
       <Tabs tabs={trainerTabs} activeTab={trainerTab} onChange={setTrainerTab} />
 
       {trainerTab === "Dashboard/Home" ? (
@@ -79,7 +79,7 @@ function TrainerFlow({
           <KpiSection metrics={currentPlayer.summaryMetrics} />
 
           <div className="flex flex-col gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
               Player detail views
             </p>
             <div className="flex flex-wrap gap-2">
@@ -91,8 +91,8 @@ function TrainerFlow({
                   className={cn(
                     "rounded-full border px-3.5 py-2 text-xs font-semibold transition sm:text-sm",
                     trainerPlayerTab === tab
-                      ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-900/15"
-                      : "border-slate-200/90 bg-white/80 text-slate-600 hover:border-slate-300 hover:text-slate-900",
+                      ? "border-[#3ECF8E] bg-[#3ECF8E] text-[#0F1923] shadow-none"
+                      : "border-[#1E2D40] bg-[#131F2E] text-[#9AB0C0] hover:text-[#E0E8F0]",
                   )}
                 >
                   {tab}
@@ -134,17 +134,17 @@ function TrainerFlow({
       {trainerTab === "New Assessment" ? (
         <SurfaceCard>
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
               New Assessment
             </p>
-            <h2 className="text-xl font-semibold text-slate-900">Assessment input flow coming next phase</h2>
-            <p className="text-sm text-slate-600">
+            <h2 className="text-xl font-semibold text-[#E0E8F0]">Assessment input flow coming next phase</h2>
+            <p className="text-sm text-[#9AB0C0]">
               Placeholder only for now. Existing scoring and player data remain unchanged in this phase.
             </p>
           </div>
         </SurfaceCard>
       ) : null}
-    </div>
+    </section>
   );
 }
 

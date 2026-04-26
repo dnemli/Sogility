@@ -28,7 +28,7 @@ function ClusterMap({
   const axisLabelBottomBaseline = pad + plotH + axisLabelGap + 14;
 
   return (
-    <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-3 sm:p-4">
+    <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-3 sm:p-4">
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="h-auto w-full min-h-[340px] max-h-[560px] sm:min-h-[380px]"
@@ -46,12 +46,7 @@ function ClusterMap({
         {points.map((point) => (
           <g key={point.label}>
             <circle cx={point.x} cy={point.y} r="28" fill={point.color} fillOpacity="0.28" />
-            <text
-              x={point.x}
-              y={point.y + 48}
-              textAnchor="middle"
-              className="fill-slate-700 text-[16px] font-semibold"
-            >
+            <text x={point.x} y={point.y + 48} textAnchor="middle" className="fill-[#9AB0C0] text-[16px] font-semibold">
               {point.label}
             </text>
           </g>
@@ -67,34 +62,29 @@ function ClusterMap({
             fill="none"
             strokeWidth="1"
           />
-          <text
-            x={playerPoint.x}
-            y={playerPoint.y - 20}
-            textAnchor="middle"
-            className="fill-slate-800 text-[16px] font-bold"
-          >
+          <text x={playerPoint.x} y={playerPoint.y - 20} textAnchor="middle" className="fill-[#E0E8F0] text-[16px] font-bold">
             {playerPoint.label || "Player"}
           </text>
         </g>
-        <text x={pad + 4} y={axisLabelTopBaseline} className="fill-slate-700 text-[20px] font-bold tracking-tight">
+        <text x={pad + 4} y={axisLabelTopBaseline} className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight">
           Explosive direct play
         </text>
         <text
           x={w - pad - 4}
           y={axisLabelTopBaseline}
           textAnchor="end"
-          className="fill-slate-700 text-[20px] font-bold tracking-tight"
+          className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight"
         >
           Control and possession
         </text>
-        <text x={pad + 4} y={axisLabelBottomBaseline} className="fill-slate-700 text-[20px] font-bold tracking-tight">
+        <text x={pad + 4} y={axisLabelBottomBaseline} className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight">
           Developmental ceiling
         </text>
         <text
           x={w - pad - 4}
           y={axisLabelBottomBaseline}
           textAnchor="end"
-          className="fill-slate-700 text-[20px] font-bold tracking-tight"
+          className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight"
         >
           All-around polish
         </text>
@@ -113,14 +103,14 @@ export function ArchetypeInsightCard({ archetype }: ArchetypeInsightCardProps) {
           description={archetype.summary}
         />
 
-        <div className="rounded-[24px] border border-emerald-200/70 bg-emerald-50/70 p-4">
+        <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4">
           <div className="flex items-start gap-3">
-            <span className="rounded-2xl bg-white p-2 text-emerald-700 shadow-sm">
+            <span className="rounded-2xl bg-[#1E2D40] p-2 text-[#3ECF8E]">
               <Sparkles className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-slate-900">Coach-ready insight</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{archetype.coachInsight}</p>
+              <p className="text-sm font-semibold text-[#E0E8F0]">Coach-ready insight</p>
+              <p className="mt-2 text-sm leading-6 text-[#9AB0C0]">{archetype.coachInsight}</p>
             </div>
           </div>
         </div>
@@ -129,11 +119,11 @@ export function ArchetypeInsightCard({ archetype }: ArchetypeInsightCardProps) {
 
         <div className="grid gap-3 sm:grid-cols-2">
           {archetype.traits.map((trait) => (
-            <div key={trait.label} className="rounded-[20px] border border-slate-200/80 bg-white/80 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div key={trait.label} className="rounded-[20px] border border-[#1E2D40] bg-[#0F2236] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6A8090]">
                 {trait.label}
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{trait.value}</p>
+              <p className="mt-2 text-sm leading-6 text-[#E0E8F0]">{trait.value}</p>
             </div>
           ))}
         </div>

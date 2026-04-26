@@ -25,7 +25,7 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
       <div className="flex h-full flex-col gap-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <SectionHeading eyebrow="Progress Over Time" title={title} description={description} />
-          <span className="w-fit rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
+          <span className="w-fit rounded-full bg-[#1E2D40] px-3 py-1 text-xs font-semibold text-[#9AB0C0]">
             {points.length === 0
               ? "No monthly points"
               : `Showing ${points.length} month${points.length === 1 ? "" : "s"}`}
@@ -33,31 +33,31 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
         </div>
         <div className="h-[320px]">
           {points.length === 0 ? (
-            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 text-center text-sm text-slate-600">
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
               No session months in the training extract for this player.
             </div>
           ) : null}
           {points.length === 0 ? null : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={points} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.28)" />
+              <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
               <XAxis
                 dataKey="label"
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#64748b", fontSize: 12 }}
+                tick={{ fill: "#9AB0C0", fontSize: 12 }}
               />
               <YAxis
                 domain={[30, 99]}
                 tickCount={6}
                 tickLine={false}
                 axisLine={false}
-                tick={{ fill: "#64748b", fontSize: 12 }}
+                tick={{ fill: "#9AB0C0", fontSize: 12 }}
                 label={{
                   value: "SGI",
                   angle: -90,
                   position: "insideLeft",
-                  fill: "#64748b",
+                  fill: "#9AB0C0",
                   fontSize: 11,
                 }}
               />
@@ -69,7 +69,7 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
                 type="monotone"
                 dataKey="rps"
                 name="SGI"
-                stroke="#0f7ac0"
+                stroke="#3ECF8E"
                 strokeWidth={3}
                 dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
                 activeDot={{ r: 4 }}
@@ -78,10 +78,10 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
           </ResponsiveContainer>
           )}
         </div>
-        <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4">
-          <p className="text-sm font-medium text-slate-500">Latest month (SGI)</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{latest.toFixed(1)}</p>
-          <p className="mt-2 text-xs leading-5 text-slate-500">
+        <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4">
+          <p className="text-sm font-medium text-[#6A8090]">Latest month (SGI)</p>
+          <p className="mt-1 text-2xl font-semibold text-[#E0E8F0]">{latest.toFixed(1)}</p>
+          <p className="mt-2 text-xs leading-5 text-[#9AB0C0]">
             SGI is shown on a 30-99 scale and is derived from cohort-relative standing for that month.
           </p>
         </div>
