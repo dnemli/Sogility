@@ -165,6 +165,20 @@ function ParentPlayerFlow({
 
   return (
     <div className="flex flex-col gap-6">
+      <section className="mx-auto w-full max-w-screen-sm py-2">
+        <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+            Switch Player (Demo)
+          </p>
+          <PlayerSearch
+            players={dashboardCollection.players}
+            selectedPlayerId={currentPlayer.id}
+            onSelectPlayer={onPlayerChange}
+            mode="darkCompact"
+          />
+        </SurfaceCard>
+      </section>
+
       <div className="mx-auto w-full max-w-screen-sm">
         <div className="inline-flex w-full rounded-full border border-[#1E2D40] bg-[#131F2E] p-1">
           {parentTabs.map((tab) => {
@@ -189,18 +203,6 @@ function ParentPlayerFlow({
       {parentTab === "Overview" ? (
         <section className="mx-auto w-full max-w-screen-sm py-2">
           <div className="flex w-full flex-col gap-4">
-            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
-                Switch Player (Demo)
-              </p>
-              <PlayerSearch
-                players={dashboardCollection.players}
-                selectedPlayerId={currentPlayer.id}
-                onSelectPlayer={onPlayerChange}
-                mode="darkCompact"
-              />
-            </SurfaceCard>
-
             <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
               <SectionHeader
                 overline="Player Profile"
@@ -243,18 +245,6 @@ function ParentPlayerFlow({
       {parentTab === "Progress" ? (
         <section className="mx-auto w-full max-w-screen-sm py-2">
           <div className="flex w-full flex-col gap-4">
-            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
-                Switch Player (Demo)
-              </p>
-              <PlayerSearch
-                players={dashboardCollection.players}
-                selectedPlayerId={currentPlayer.id}
-                onSelectPlayer={onPlayerChange}
-                mode="darkCompact"
-              />
-            </SurfaceCard>
-
             <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
               <SectionHeader
                 overline="Progress"
