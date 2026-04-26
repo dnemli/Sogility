@@ -104,13 +104,13 @@ function TrainerFlow({
           {trainerPlayerTab === "Progress over time" ? (
             <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
               <ProgressTrendChart
-                title="SGI over time"
-                description="Monthly SGI trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
+                title="Score over time"
+                description="Monthly SGI Score trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
                 points={visibleTrend}
               />
               <DistributionChart
                 title="Cohort distribution snapshot"
-                description="Where this player's SGI sits within the peer distribution."
+                description="Where this player's SGI Score sits within the peer distribution."
                 distribution={{
                   ...currentPlayer.cohortDistribution,
                   cohortLabel: currentPlayer.profile.cohortName,
@@ -210,7 +210,7 @@ function ParentPlayerFlow({
                 description={`${currentPlayer.profile.ageGroup} · ${currentPlayer.profile.gender}`}
               />
               <div className="mt-6 flex flex-col items-center gap-3">
-                <ScoreRing score={Number(overallSgi)} size={178} />
+                <ScoreRing score={Number(overallSgi)} size={178} label="Score" />
                 <span
                   className={cn(
                     "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
@@ -249,7 +249,7 @@ function ParentPlayerFlow({
               <SectionHeader
                 overline="Progress"
                 title={`${currentPlayer.profile.playerName}`}
-                description="Overall SGI trend across recorded months."
+                description="Overall Score trend across recorded months."
               />
               <div className="mt-4 h-[280px]">
                 {visibleTrend.length === 0 ? (
@@ -273,11 +273,11 @@ function ParentPlayerFlow({
                         axisLine={false}
                         tick={{ fill: "#9AB0C0", fontSize: 12 }}
                       />
-                      <Tooltip formatter={(value: number) => [`${value}`, "SGI"]} labelFormatter={(label) => `${label}`} />
+                      <Tooltip formatter={(value: number) => [`${value}`, "Score"]} labelFormatter={(label) => `${label}`} />
                       <Line
                         type="monotone"
                         dataKey="rps"
-                        name="SGI"
+                        name="Score"
                         stroke="#3ECF8E"
                         strokeWidth={3}
                         dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
@@ -329,11 +329,11 @@ function ParentPlayerFlow({
                           axisLine={false}
                           tick={{ fill: "#9AB0C0", fontSize: 12 }}
                         />
-                        <Tooltip formatter={(value: number) => [`${value}`, "SGI"]} labelFormatter={(label) => `${label}`} />
+                        <Tooltip formatter={(value: number) => [`${value}`, "Skill Score"]} labelFormatter={(label) => `${label}`} />
                         <Line
                           type="monotone"
                           dataKey="score"
-                          name="SGI"
+                          name="Skill Score"
                           stroke="#3ECF8E"
                           strokeWidth={3}
                           dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
@@ -361,7 +361,7 @@ function ParentPlayerFlow({
                           <th className="px-3 py-2">Date</th>
                           <th className="px-3 py-2">Assessment</th>
                           <th className="px-3 py-2">Skill</th>
-                          <th className="px-3 py-2">SGI</th>
+                          <th className="px-3 py-2">Score</th>
                           <th className="px-3 py-2">Tier</th>
                         </tr>
                       </thead>

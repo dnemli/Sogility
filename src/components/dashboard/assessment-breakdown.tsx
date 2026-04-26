@@ -31,7 +31,7 @@ export function AssessmentBreakdown({ abilities, playerName }: AssessmentBreakdo
         <div className="overflow-hidden rounded-[24px] border border-[#1E2D40] bg-[#0F2236]">
           <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)] gap-6 border-b border-[#1E2D40] px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#6A8090] lg:grid">
             <span>Ability</span>
-            <span>SGI tier</span>
+            <span>Score tier</span>
           </div>
 
           <div className="divide-y divide-[#1E2D40]">
@@ -59,7 +59,7 @@ export function AssessmentBreakdown({ abilities, playerName }: AssessmentBreakdo
                         <p className="mt-1 text-sm text-[#9AB0C0]">
                           {hasTests ? (
                             <>
-                              {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg SGI{" "}
+                              {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg score{" "}
                               {row.avgAps.toFixed(1)}
                             </>
                           ) : (

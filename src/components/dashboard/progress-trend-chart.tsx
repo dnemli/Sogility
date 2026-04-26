@@ -54,7 +54,7 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
                 axisLine={false}
                 tick={{ fill: "#9AB0C0", fontSize: 12 }}
                 label={{
-                  value: "SGI",
+                  value: "SGI Score",
                   angle: -90,
                   position: "insideLeft",
                   fill: "#9AB0C0",
@@ -62,13 +62,13 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
                 }}
               />
               <Tooltip
-                formatter={(value: number) => [`${value}`, "SGI"]}
+                formatter={(value: number) => [`${value}`, "SGI Score"]}
                 labelFormatter={(label) => `${label}`}
               />
               <Line
                 type="monotone"
                 dataKey="rps"
-                name="SGI"
+                name="SGI Score"
                 stroke="#3ECF8E"
                 strokeWidth={3}
                 dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
@@ -79,10 +79,10 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
           )}
         </div>
         <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4">
-          <p className="text-sm font-medium text-[#6A8090]">Latest month (SGI)</p>
+          <p className="text-sm font-medium text-[#6A8090]">Latest month (SGI Score)</p>
           <p className="mt-1 text-2xl font-semibold text-[#E0E8F0]">{latest.toFixed(1)}</p>
           <p className="mt-2 text-xs leading-5 text-[#9AB0C0]">
-            SGI is shown on a 30-99 scale and is derived from cohort-relative standing for that month.
+            SGI Score is shown on a 30-99 scale and is derived from cohort-relative standing for that month.
           </p>
         </div>
       </div>

@@ -25,9 +25,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
         <div className="flex flex-col gap-3">
           <SectionHeading eyebrow="Peer Distribution" title={title} description={description} />
           <div className="flex flex-wrap items-center gap-3 text-sm text-[#9AB0C0]">
-            <span className="rounded-full bg-[#1E2D40] px-3 py-1 font-medium text-[#E0E8F0]">
-              SGI distribution
-            </span>
+            <span className="rounded-full bg-[#1E2D40] px-3 py-1 font-medium text-[#E0E8F0]">Score distribution</span>
             <span className="rounded-full bg-[#3ECF8E]/20 px-3 py-1 font-medium text-[#3ECF8E]">
               Player marker: {distribution.playerScore}
             </span>
@@ -53,7 +51,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
               />
               <Tooltip
                 formatter={(value: number) => [`${value} players`, "Cohort count"]}
-                labelFormatter={(label) => `SGI bucket midpoint: ${label}`}
+                labelFormatter={(label) => `Score bucket midpoint: ${label}`}
               />
               <Bar dataKey="count" barSize={18} fill="#1E2D40" radius={[12, 12, 0, 0]} />
               <ReferenceLine
@@ -82,7 +80,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
           <div>
             <p className="text-sm font-medium text-[#6A8090]">What this shows</p>
             <p className="mt-1 text-sm leading-6 text-[#9AB0C0]">
-              The marker shows where this player's SGI sits in the cohort distribution from the training log.
+              The marker shows where this player's SGI Score sits in the cohort distribution from the training log.
             </p>
           </div>
         </div>

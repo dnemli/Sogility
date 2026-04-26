@@ -6,16 +6,24 @@ type PerformanceBandScaleProps = {
   performanceBand: keyof typeof bandColorMap;
 };
 
+const tierBands: Array<{ band: (typeof bandOrder)[number]; start: number; end: number }> = [
+  { band: "Foundation", start: 0, end: 30 },
+  { band: "Developing", start: 30, end: 50 },
+  { band: "Approaching", start: 50, end: 70 },
+  { band: "Strong", start: 70, end: 90 },
+  { band: "Elite", start: 90, end: 100 },
+];
+
 export function PerformanceBandScale({
   apsScore,
   performanceBand,
 }: PerformanceBandScaleProps) {
-  const markerPosition = `${Math.max(4, Math.min(96, clampDisplayedScore(apsScore)))}%`;
+  const markerPosition = `${Math.max(0, Math.min(100, clampDisplayedScore(apsScore)))}%`;
 
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-[#9AB0C0]">SGI tier</p>
+        <p className="text-sm font-medium text-[#9AB0C0]">Score tier</p>
         <span
           className={cn(
             "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
@@ -26,9 +34,13 @@ export function PerformanceBandScale({
         </span>
       </div>
       <div className="relative w-full min-w-[min(100%,22rem)]">
-        <div className="grid grid-cols-5 overflow-hidden rounded-full border border-[#1E2D40]">
-          {bandOrder.map((band) => (
-            <div key={band} className={cn("h-6 sm:h-7", bandColorMap[band])} />
+        <div className="flex overflow-hidden rounded-full border border-[#1E2D40]">
+          {tierBands.map(({ band, start, end }) => (
+            <div
+              key={band}
+              className={cn("h-6 sm:h-7", bandColorMap[band])}
+              style={{ width: `${end - start}%` }}
+            />
           ))}
         </div>
         <div
@@ -36,11 +48,12 @@ export function PerformanceBandScale({
           style={{ left: markerPosition }}
         />
       </div>
-      <div className="flex w-full gap-1.5 px-0.5 sm:gap-2">
-        {bandOrder.map((band) => (
+      <div className="flex w-full">
+        {tierBands.map(({ band, start, end }) => (
           <span
             key={band}
-            className="min-w-0 flex-1 text-center text-[9px] font-medium leading-tight text-[#9AB0C0] sm:text-[10px]"
+            className="text-center text-[9px] font-medium leading-tight text-[#9AB0C0] sm:text-[10px]"
+            style={{ width: `${end - start}%` }}
           >
             {band}
           </span>

@@ -21,10 +21,10 @@ export function App() {
         isDarkApp ? "bg-[#0F1923] text-[#E0E8F0]" : "",
       )}
     >
-      <div className={cn("mx-auto flex w-full max-w-7xl flex-col gap-6", activeRole === "Parent/Player View" ? "max-w-screen-sm" : "")}>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <section
           className={cn(
-            "rounded-2xl p-4",
+            "mx-auto w-full max-w-screen-sm rounded-2xl p-4",
             isDarkApp
               ? "border border-[#1E2D40] bg-[#131F2E]"
               : "border border-slate-200 bg-white",
