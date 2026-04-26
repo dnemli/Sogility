@@ -88,6 +88,19 @@ export type AbilityBreakdownRow = {
   tests: AssessmentRow[];
 };
 
+export type SkillProgressPoint = {
+  label: string;
+  score: number;
+};
+
+export type AssessmentHistoryItem = {
+  date: string;
+  assessmentName: string;
+  ability: AbilityName;
+  score: number;
+  tier: PerformanceBand;
+};
+
 export type ArchetypePoint = {
   label: string;
   x: number;
@@ -120,6 +133,8 @@ export type PlayerDashboardView = {
   profile: PlayerProfile;
   summaryMetrics: SummaryMetric[];
   progressTrend: ProgressPoint[];
+  skillProgress: Record<AbilityName, SkillProgressPoint[]>;
+  assessmentHistory: AssessmentHistoryItem[];
   cohortDistribution: CohortDistribution;
   /** Per-test rows (derived from CSV); nested under abilities in the UI. */
   assessmentBreakdown: AssessmentRow[];

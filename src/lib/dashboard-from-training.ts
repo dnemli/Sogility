@@ -1,5 +1,6 @@
 import type {
   AbilityName,
+  AssessmentHistoryItem,
   ArchetypeSummary,
   AssessmentRow,
   CohortInsightCopy,
@@ -7,6 +8,7 @@ import type {
   PerformanceBand,
   PlayerDashboardView,
   ProgressPoint,
+  SkillProgressPoint,
   SummaryMetric,
   TrendDirection,
 } from "../types/dashboard";
@@ -103,6 +105,10 @@ function monthLabelFromKeyUtc(key: string): string {
   const [y, m] = key.split("-").map(Number);
   const d = new Date(Date.UTC(y!, (m ?? 1) - 1, 1));
   return d.toLocaleString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+}
+
+function isoDayUtc(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }
 
 function percentileInSample(sample: number[], value: number): number {
@@ -347,6 +353,29 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       };
     }).slice(-12);
 
+    const skillProgress = ABILITY_ORDER.reduce(
+      (acc, ability) => {
+        const bySkillMonth = new Map<string, number[]>();
+        for (const r of rows) {
+          const mapped = mapAssessmentToAbility(r.category, r.drill);
+          if (mapped !== ability) continue;
+          const mk = monthKeyUtc(r.sessionDate);
+          const existing = bySkillMonth.get(mk) ?? [];
+          existing.push(clampDisplayedScore(r.cohortPercentile));
+          bySkillMonth.set(mk, existing);
+        }
+        const points: SkillProgressPoint[] = [...bySkillMonth.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([mk, scores]) => ({
+            label: monthLabelFromKeyUtc(mk),
+            score: Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10,
+          }));
+        acc[ability] = points.slice(-12);
+        return acc;
+      },
+      {} as Record<AbilityName, SkillProgressPoint[]>,
+    );
+
     const cohortPeers = aggs.filter((x) => x.cohortKey === a.cohortKey);
     const peerScores = cohortPeers.map((p) => p.composite);
     const binCounts = new Map<number, number>();
@@ -361,6 +390,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     }));
 
     const assessmentRows: AssessmentRow[] = [];
+    const assessmentHistory: AssessmentHistoryItem[] = [];
     const byDrill = new Map<string, TrainingSessionRowEnriched[]>();
     for (const r of rows) {
       const dk = `${r.category}||${r.drill}`;
@@ -387,8 +417,16 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
         changeDirection: dir,
         latestSessionLabel: `Latest: ${cur.isoDate}`,
       });
+      assessmentHistory.push({
+        date: isoDayUtc(cur.sessionDate),
+        assessmentName: `${cur.category} ${cur.drill}`,
+        ability,
+        score: Math.round(currentSgi),
+        tier: bandFromPct(cur.cohortPercentile),
+      });
     }
     assessmentRows.sort((a, b) => b.apsScore - a.apsScore);
+    assessmentHistory.sort((a, b) => b.date.localeCompare(a.date));
 
     const testsByAbility = new Map<AbilityName, AssessmentRow[]>();
     for (const row of assessmentRows) {
@@ -453,6 +491,8 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       profile,
       summaryMetrics,
       progressTrend: progressPoints,
+      skillProgress,
+      assessmentHistory,
       cohortDistribution: {
         cohortLabel: profile.cohortName,
         sampleSize: cohortPeers.length,
