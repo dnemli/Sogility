@@ -6,173 +6,215 @@ import { ProgressTrendChart } from "../components/dashboard/progress-trend-chart
 import { DistributionChart } from "../components/dashboard/distribution-chart";
 import { AssessmentBreakdown } from "../components/dashboard/assessment-breakdown";
 import { ArchetypeInsightCard } from "../components/dashboard/archetype-insight-card";
-import { CohortInsight } from "../components/dashboard/cohort-insight";
-import { StrengthsWeaknesses } from "../components/dashboard/strengths-weaknesses";
 import { SurfaceCard } from "../components/ui/card";
 import { Tabs } from "../components/ui/tabs";
 import { dashboardCollection } from "../data/training-data";
 import { cn } from "../lib/utils";
-import type { AssessmentSubTab, DashboardMainTab, PlayerProfile } from "../types/dashboard";
+import { PlayerSearch } from "../components/dashboard/player-search";
+import type { PlayerDashboardView } from "../types/dashboard";
 
-const mainTabs: DashboardMainTab[] = ["Overview", "Assessment Breakdown"];
+type RoleView = "Trainer View" | "Parent/Player View";
+type TrainerTab = "Dashboard/Home" | "Players" | "New Assessment";
+type TrainerPlayersTab = "Abilities" | "Progress over time";
+type ParentTab = "Overview" | "Progress";
 
-const assessmentSubTabs: AssessmentSubTab[] = [
-  "Abilities",
-  "Cohort comparison",
-  "Progress over time",
-];
+const trainerTabs: TrainerTab[] = ["Dashboard/Home", "Players", "New Assessment"];
+const trainerPlayerTabs: TrainerPlayersTab[] = ["Abilities", "Progress over time"];
+const parentTabs: ParentTab[] = ["Overview", "Progress"];
 
-/** Trailing window on the monthly RPS series (each point is a month with sessions). */
+/** Trailing window on the monthly SGI series (each point is a month with sessions). */
 const PROGRESS_POINTS = 6;
 
-export function DashboardPage() {
-  const initialPlayer = dashboardCollection.players[0];
+type DashboardPageProps = {
+  role: RoleView;
+  selectedPlayerId: string;
+  onPlayerChange: (playerId: string) => void;
+};
 
-  const [selectedPlayerId, setSelectedPlayerId] = useState(initialPlayer.id);
-  const [mainTab, setMainTab] = useState<DashboardMainTab>("Overview");
-  const [assessmentSub, setAssessmentSub] = useState<AssessmentSubTab>("Abilities");
-
-  const currentPlayer =
+function resolveSelectedPlayer(selectedPlayerId: string): PlayerDashboardView {
+  return (
     dashboardCollection.players.find((player) => player.id === selectedPlayerId) ??
-    dashboardCollection.players[0];
+    dashboardCollection.players[0]
+  );
+}
 
-  const displayProfile: PlayerProfile = currentPlayer.profile;
-
-  const handlePlayerChange = (playerId: string) => {
-    const next =
-      dashboardCollection.players.find((player) => player.id === playerId) ??
-      dashboardCollection.players[0];
-    setSelectedPlayerId(next.id);
-  };
-
+function TrainerFlow({
+  selectedPlayerId,
+  onPlayerChange,
+}: Pick<DashboardPageProps, "selectedPlayerId" | "onPlayerChange">) {
+  const [trainerTab, setTrainerTab] = useState<TrainerTab>("Dashboard/Home");
+  const [trainerPlayerTab, setTrainerPlayerTab] = useState<TrainerPlayersTab>("Abilities");
+  const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
   const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
-  const latestRps =
-    currentPlayer.progressTrend.length > 0
-      ? (currentPlayer.progressTrend[currentPlayer.progressTrend.length - 1]?.rps ?? 0)
-      : 0;
-  const derivedInsight = {
-    ...currentPlayer.cohortInsight,
-    comparisonGroup: `${displayProfile.playerName} is being compared against ${displayProfile.ageGroup} ${displayProfile.gender.toLowerCase()} players who completed the same academy assessment set.`,
-    plainLanguage: `This player’s latest monthly cohort-relative standing (RPS-style) is near ${latestRps.toFixed(1)} on the 0–100 scale vs peers in the same tier and gender.`,
-  };
 
   return (
-    <main className="min-h-screen px-4 py-6 text-ink sm:px-6 lg:px-10">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <Tabs tabs={mainTabs} activeTab={mainTab} onChange={setMainTab} />
+    <div className="flex flex-col gap-6">
+      <Tabs tabs={trainerTabs} activeTab={trainerTab} onChange={setTrainerTab} />
 
-        {mainTab === "Assessment Breakdown" ? (
+      {trainerTab === "Dashboard/Home" ? (
+        <AcademyOverviewPage />
+      ) : null}
+
+      {trainerTab === "Players" ? (
+        <>
+          <DashboardHeader
+            dashboardCollection={dashboardCollection}
+            displayProfile={currentPlayer.profile}
+            selectedPlayerId={currentPlayer.id}
+            onPlayerChange={onPlayerChange}
+          />
+
+          <KpiSection metrics={currentPlayer.summaryMetrics} />
+
           <div className="flex flex-col gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Assessment views
+              Player detail views
             </p>
             <div className="flex flex-wrap gap-2">
-              {assessmentSubTabs.map((t) => (
+              {trainerPlayerTabs.map((tab) => (
                 <button
-                  key={t}
+                  key={tab}
                   type="button"
-                  onClick={() => setAssessmentSub(t)}
+                  onClick={() => setTrainerPlayerTab(tab)}
                   className={cn(
                     "rounded-full border px-3.5 py-2 text-xs font-semibold transition sm:text-sm",
-                    assessmentSub === t
+                    trainerPlayerTab === tab
                       ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-900/15"
                       : "border-slate-200/90 bg-white/80 text-slate-600 hover:border-slate-300 hover:text-slate-900",
                   )}
                 >
-                  {t}
+                  {tab}
                 </button>
               ))}
             </div>
           </div>
-        ) : null}
 
-        {mainTab === "Overview" ? (
-          <AcademyOverviewPage />
-        ) : (
-          <>
-            <DashboardHeader
-              dashboardCollection={dashboardCollection}
-              displayProfile={displayProfile}
-              selectedPlayerId={selectedPlayerId}
-              onPlayerChange={handlePlayerChange}
-            />
+          {trainerPlayerTab === "Progress over time" ? (
+            <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+              <ProgressTrendChart
+                title="SGI over time"
+                description="Monthly SGI trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
+                points={visibleTrend}
+              />
+              <DistributionChart
+                title="Cohort distribution snapshot"
+                description="Where this player's SGI sits within the peer distribution."
+                distribution={{
+                  ...currentPlayer.cohortDistribution,
+                  cohortLabel: currentPlayer.profile.cohortName,
+                }}
+              />
+            </section>
+          ) : null}
 
-            <KpiSection metrics={currentPlayer.summaryMetrics} />
+          {trainerPlayerTab === "Abilities" ? (
+            <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+              <AssessmentBreakdown
+                abilities={currentPlayer.abilityBreakdown}
+                playerName={currentPlayer.profile.playerName}
+              />
+              <ArchetypeInsightCard archetype={currentPlayer.archetype} />
+            </section>
+          ) : null}
+        </>
+      ) : null}
 
-            {assessmentSub === "Progress over time" ? (
-              <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-                <ProgressTrendChart
-                  title="Cohort-relative standing over time"
-                  description="Mean cohort drill percentile by month (RPS-style), for each month this player has sessions. Higher values indicate stronger standing vs same-tier peers in that month."
-                  points={visibleTrend}
-                />
-                <DistributionChart
-                  title="Cohort distribution snapshot"
-                  description="Where this player’s composite mean percentile sits within the peer distribution."
-                  distribution={{
-                    ...currentPlayer.cohortDistribution,
-                    cohortLabel: displayProfile.cohortName,
-                  }}
-                />
-              </section>
-            ) : null}
+      {trainerTab === "New Assessment" ? (
+        <SurfaceCard>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              New Assessment
+            </p>
+            <h2 className="text-xl font-semibold text-slate-900">Assessment input flow coming next phase</h2>
+            <p className="text-sm text-slate-600">
+              Placeholder only for now. Existing scoring and player data remain unchanged in this phase.
+            </p>
+          </div>
+        </SurfaceCard>
+      ) : null}
+    </div>
+  );
+}
 
-            {assessmentSub === "Abilities" ? (
-              <>
-                <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-                  <AssessmentBreakdown
-                    abilities={currentPlayer.abilityBreakdown}
-                    playerName={currentPlayer.profile.playerName}
-                  />
-                  <ArchetypeInsightCard archetype={currentPlayer.archetype} />
-                </section>
-                <StrengthsWeaknesses
-                  strengths={currentPlayer.strengths}
-                  improvements={currentPlayer.improvements}
-                />
-              </>
-            ) : null}
+function ParentPlayerFlow({
+  selectedPlayerId,
+  onPlayerChange,
+}: Pick<DashboardPageProps, "selectedPlayerId" | "onPlayerChange">) {
+  const [parentTab, setParentTab] = useState<ParentTab>("Overview");
+  const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
+  const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
 
-            {assessmentSub === "Cohort comparison" ? (
-              <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <CohortInsight insight={derivedInsight} />
-                <SurfaceCard className="overflow-hidden">
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      <p className="text-sm font-medium uppercase tracking-[0.24em] text-emerald-700/70">
-                        Cohort context
-                      </p>
-                      <h3 className="mt-2 text-xl font-semibold text-slate-900">
-                        Reading the scores with confidence
-                      </h3>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-white/80 bg-white/80 p-4">
-                        <p className="text-sm font-medium text-slate-500">Selected cohort</p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
-                          {displayProfile.cohortName}
-                        </p>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {displayProfile.ageGroup} players, {displayProfile.gender}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-white/80 bg-white/80 p-4">
-                        <p className="text-sm font-medium text-slate-500">Benchmark lens</p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
-                          APS uses cohort-specific benchmark cutoffs
-                        </p>
-                        <p className="mt-1 text-sm text-slate-600">
-                          The colored band tells you whether performance is foundational, developing, approaching, strong, or elite.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </SurfaceCard>
-              </section>
-            ) : null}
-          </>
-        )}
-      </div>
-    </main>
+  return (
+    <div className="flex flex-col gap-6">
+      <SurfaceCard>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Parent / Player View
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Viewing: {currentPlayer.profile.playerName}</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              {currentPlayer.profile.ageGroup} · {currentPlayer.profile.gender} · {currentPlayer.profile.cohortName}
+            </p>
+          </div>
+          <PlayerSearch
+            players={dashboardCollection.players}
+            selectedPlayerId={currentPlayer.id}
+            onSelectPlayer={onPlayerChange}
+          />
+        </div>
+      </SurfaceCard>
+
+      <Tabs tabs={parentTabs} activeTab={parentTab} onChange={setParentTab} />
+
+      {parentTab === "Overview" ? (
+        <>
+          <SurfaceCard>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Selected player</p>
+              <h2 className="text-3xl font-semibold text-slate-900">{currentPlayer.profile.playerName}</h2>
+              <p className="text-sm text-slate-600">
+                Last updated window: {currentPlayer.profile.trackingWindow}
+              </p>
+            </div>
+          </SurfaceCard>
+          <KpiSection metrics={currentPlayer.summaryMetrics} />
+          <AssessmentBreakdown
+            abilities={currentPlayer.abilityBreakdown}
+            playerName={currentPlayer.profile.playerName}
+          />
+        </>
+      ) : null}
+
+      {parentTab === "Progress" ? (
+        <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+          <ProgressTrendChart
+            title={`${currentPlayer.profile.playerName} progress`}
+            description="SGI trend for this selected player across recorded months."
+            points={visibleTrend}
+          />
+          <DistributionChart
+            title="Current SGI position"
+            description="Current selected player position in their cohort."
+            distribution={{
+              ...currentPlayer.cohortDistribution,
+              cohortLabel: currentPlayer.profile.cohortName,
+            }}
+          />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+export function DashboardPage({ role, selectedPlayerId, onPlayerChange }: DashboardPageProps) {
+  return (
+    <>
+      {role === "Trainer View" ? (
+        <TrainerFlow selectedPlayerId={selectedPlayerId} onPlayerChange={onPlayerChange} />
+      ) : (
+        <ParentPlayerFlow selectedPlayerId={selectedPlayerId} onPlayerChange={onPlayerChange} />
+      )}
+    </>
   );
 }

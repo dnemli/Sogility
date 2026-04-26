@@ -25,13 +25,13 @@ export function AssessmentBreakdown({ abilities, playerName }: AssessmentBreakdo
         <SectionHeading
           eyebrow="Abilities"
           title={`${playerName} — ability snapshot`}
-          description="Each row is a skill ability (grouped from training categories). Expand to see individual tests from the session log."
+          description="Each row is a skill ability. Expand to see individual assessments from the session log."
         />
 
         <div className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/80">
           <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)] gap-6 border-b border-slate-200/80 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 lg:grid">
             <span>Ability</span>
-            <span>Benchmark fit (APS)</span>
+            <span>SGI tier</span>
           </div>
 
           <div className="divide-y divide-slate-200/70">
@@ -59,7 +59,7 @@ export function AssessmentBreakdown({ abilities, playerName }: AssessmentBreakdo
                         <p className="mt-1 text-sm text-slate-500">
                           {hasTests ? (
                             <>
-                              {row.tests.length} test{row.tests.length === 1 ? "" : "s"} · avg APS{" "}
+                              {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg SGI{" "}
                               {row.avgAps.toFixed(1)}
                             </>
                           ) : (
@@ -72,7 +72,7 @@ export function AssessmentBreakdown({ abilities, playerName }: AssessmentBreakdo
                       {hasTests ? (
                         <>
                           <PerformanceBandScale apsScore={row.avgAps} performanceBand={row.aggregateBand} />
-                          <p className="mt-2 text-xs text-slate-500">Aggregate across tests in this ability</p>
+                          <p className="mt-2 text-xs text-slate-500">Aggregate across assessments in this skill</p>
                         </>
                       ) : (
                         <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/70 px-4 py-3">

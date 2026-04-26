@@ -5,12 +5,11 @@ export type PerformanceBand = (typeof bandOrder)[number];
 export type TrendDirection = "up" | "down" | "flat";
 export type SkillFilterOption =
   | "All assessments"
-  | "Ball Mastery"
+  | "Dribbling"
   | "Passing"
+  | "Vision"
   | "First Touch"
-  | "Decision Making"
-  | "Speed & Agility"
-  | "Explosiveness";
+  | "Agility";
 
 /** Five academy abilities (Analysis/preprocessing_scoring_archetype.ipynb + cluster.py). */
 export type AbilityName = "Dribbling" | "Passing" | "Vision" | "Agility" | "First Touch";
@@ -52,7 +51,7 @@ export type SummaryMetric = {
   changeDirection: TrendDirection;
 };
 
-/** Monthly trend for cohort-relative standing (RPS-style mean). */
+/** Monthly trend shown as SGI (30-99 display range). */
 export type ProgressPoint = {
   label: string;
   rps: number;

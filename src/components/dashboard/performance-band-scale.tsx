@@ -1,4 +1,4 @@
-import { bandColorMap, bandOrder, bandTextMap } from "../../lib/dashboard-helpers";
+import { bandColorMap, bandOrder, bandTextMap, clampDisplayedScore } from "../../lib/dashboard-helpers";
 import { cn } from "../../lib/utils";
 
 type PerformanceBandScaleProps = {
@@ -10,12 +10,12 @@ export function PerformanceBandScale({
   apsScore,
   performanceBand,
 }: PerformanceBandScaleProps) {
-  const markerPosition = `${Math.max(4, Math.min(96, apsScore))}%`;
+  const markerPosition = `${Math.max(4, Math.min(96, clampDisplayedScore(apsScore)))}%`;
 
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-slate-700">Benchmark fit</p>
+        <p className="text-sm font-medium text-slate-700">SGI tier</p>
         <span
           className={cn(
             "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",

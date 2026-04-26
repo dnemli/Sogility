@@ -26,7 +26,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
           <SectionHeading eyebrow="Peer Distribution" title={title} description={description} />
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
-              Composite mean percentile
+              SGI distribution
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
               Player marker: {distribution.playerScore}
@@ -40,7 +40,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
               <XAxis
                 dataKey="score"
                 type="number"
-                domain={[0, 100]}
+                domain={[30, 99]}
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: "#64748b", fontSize: 12 }}
@@ -53,7 +53,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
               />
               <Tooltip
                 formatter={(value: number) => [`${value} players`, "Cohort count"]}
-                labelFormatter={(label) => `Score bucket midpoint: ${label}`}
+                labelFormatter={(label) => `SGI bucket midpoint: ${label}`}
               />
               <Bar dataKey="count" barSize={18} fill="#bfd7ca" radius={[12, 12, 0, 0]} />
               <ReferenceLine
@@ -82,7 +82,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
           <div>
             <p className="text-sm font-medium text-slate-500">What this shows</p>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              The marker shows where this player’s composite mean sits in the cohort distribution from the training log.
+              The marker shows where this player's SGI sits in the cohort distribution from the training log.
             </p>
           </div>
         </div>

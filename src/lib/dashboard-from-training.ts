@@ -12,6 +12,7 @@ import type {
 } from "../types/dashboard";
 import { ABILITY_ORDER, mapAssessmentToAbility } from "./assessment-to-ability";
 import { tierLetterToAgeGroupLabel } from "./age-group-labels";
+import { clampDisplayedScore, getScoreChange, getTier } from "./dashboard-helpers";
 import type { TrainingSessionRowEnriched } from "./training-cohort-percentiles";
 import {
   centerMatrix,
@@ -79,11 +80,7 @@ function assignClusterArchetypes(centers: number[][]): string[] {
 }
 
 function bandFromPct(pct: number): PerformanceBand {
-  if (pct < 20) return "Foundation";
-  if (pct < 40) return "Developing";
-  if (pct < 60) return "Approaching";
-  if (pct < 80) return "Strong";
-  return "Elite";
+  return getTier(pct);
 }
 
 function formatOrdinal(n: number): string {
@@ -217,7 +214,7 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
 
     byPlayer.set(pk, {
       primaryArchetype: primary,
-      summary: `K-means (${kCl} clusters) on five ability RPS means, projected with PCA (same structure as Analysis/cluster.py).`,
+      summary: `K-means (${kCl} clusters) on five skill signals, projected with PCA (same structure as Analysis/cluster.py).`,
       coachInsight: `Skill vector (cohort %): Drib ${vec[0]!.toFixed(0)}, Pass ${vec[1]!.toFixed(0)}, Vision ${vec[2]!.toFixed(0)}, Agility ${vec[3]!.toFixed(0)}, First Touch ${vec[4]!.toFixed(0)}.`,
       clusterPoints: clusters.map((c) => ({ label: c.label, x: c.x, y: c.y, color: c.color })),
       playerPoint: {
@@ -227,7 +224,7 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
         color: "#0f172a",
       },
       traits: [
-        { label: "Cluster", value: `Assigned to “${primary}” from RPS skill space.` },
+        { label: "Cluster", value: `Assigned to "${primary}" from the five-skill scoring space.` },
         { label: "Recommendations", value: recommendationsForArchetype(primary) },
       ],
     });
@@ -276,7 +273,8 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       trackingWindow: `${rows[0]!.isoDate.slice(0, 4)}–${latest.isoDate.slice(0, 4)}`,
     };
 
-    const rps = rpsByPlayer.get(a.key) ?? 0;
+    const rpsRaw = rpsByPlayer.get(a.key) ?? 0;
+    const sgi = clampDisplayedScore(rpsRaw);
 
     const byMonth = new Map<string, TrainingSessionRowEnriched[]>();
     for (const r of rows) {
@@ -296,17 +294,17 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
 
     const apsDelta = currentMonthMean - priorMonthMean;
     const apsTrend: TrendDirection = Math.abs(apsDelta) < 0.5 ? "flat" : apsDelta > 0 ? "up" : "down";
-    const compositeBand = bandFromPct(a.composite);
+    const compositeBand = bandFromPct(rpsRaw);
 
-    const rpsOrdinal = formatOrdinal(rps);
+    const rpsOrdinal = formatOrdinal(rpsRaw);
     const rpsContextLine = (() => {
-      if (rps >= 75) {
+      if (rpsRaw >= 75) {
         return "This player is among the stronger performers in this cohort for overall training-session standing.";
       }
-      if (rps >= 55) {
+      if (rpsRaw >= 55) {
         return "This player sits above the cohort midpoint — a solid position versus same age-group peers.";
       }
-      if (rps >= 35) {
+      if (rpsRaw >= 35) {
         return "This player is near the middle of the cohort — typical variation with room to climb.";
       }
       return "This player is in the lower segment of the cohort distribution on this composite — a clear development focus area.";
@@ -314,38 +312,38 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
 
     const summaryMetrics: SummaryMetric[] = [
       {
-        label: "Performance band",
+        label: "SGI tier",
         value: compositeBand,
-        description: `Overall APS band from mean within-drill percentile (${a.composite.toFixed(
+        description: `Overall SGI tier from cohort-relative standing (SGI ${sgi.toFixed(
           1,
-        )} composite). ${
+        )}). ${
           prevMk === undefined
             ? "Only one calendar month with sessions in the extract."
-            : `Latest active month averaged ${currentMonthMean.toFixed(1)} vs ${priorMonthMean.toFixed(1)} prior month (within-drill percentiles).`
+            : `Latest active month averaged SGI ${clampDisplayedScore(currentMonthMean).toFixed(1)} vs ${clampDisplayedScore(priorMonthMean).toFixed(1)} prior month.`
         }`,
         changeText:
           prevMk === undefined
             ? "Single month on record"
-            : `${apsDelta >= 0 ? "+" : ""}${apsDelta.toFixed(1)} pts vs prior month`,
+            : getScoreChange(clampDisplayedScore(currentMonthMean), clampDisplayedScore(priorMonthMean)),
         changeDirection: prevMk === undefined ? "flat" : apsTrend,
       },
       {
-        label: "RPS & cohort rank",
-        value: `${rpsOrdinal} percentile`,
-        description: `${rpsContextLine} In ${profile.cohortName}, that is approximately the ${rpsOrdinal} percentile among peers on the composite training metric (from the training session extract).`,
+        label: "Overall SGI",
+        value: `${sgi.toFixed(1)}`,
+        description: `${rpsContextLine} In ${profile.cohortName}, this sits near the ${rpsOrdinal} cohort percentile (source: training session extract).`,
         changeText: "Cohort-relative",
         changeDirection: "flat",
       },
     ];
 
-    /** One point per calendar month (UTC) that has ≥1 session — mean cohort drill percentile (RPS-style). */
+    /** One point per calendar month (UTC) that has >=1 session — displayed as SGI. */
     const sortedMonthKeys = [...byMonth.keys()].sort();
     const progressPoints: ProgressPoint[] = sortedMonthKeys.map((mk) => {
       const list = byMonth.get(mk) ?? [];
       const mRps = list.reduce((s, x) => s + x.cohortPercentile, 0) / list.length;
       return {
         label: monthLabelFromKeyUtc(mk),
-        rps: Math.round(mRps * 10) / 10,
+        rps: Math.round(clampDisplayedScore(mRps) * 10) / 10,
       };
     }).slice(-12);
 
@@ -353,10 +351,11 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     const peerScores = cohortPeers.map((p) => p.composite);
     const binCounts = new Map<number, number>();
     for (const s of peerScores) {
-      const mid = Math.max(10, Math.min(90, Math.round(s / 10) * 10));
+      const sgiScore = clampDisplayedScore(s);
+      const mid = Math.max(30, Math.min(90, Math.round(sgiScore / 10) * 10));
       binCounts.set(mid, (binCounts.get(mid) ?? 0) + 1);
     }
-    const bins = [10, 20, 30, 40, 50, 60, 70, 80, 90].map((score) => ({
+    const bins = [30, 40, 50, 60, 70, 80, 90].map((score) => ({
       score,
       count: binCounts.get(score) ?? 0,
     }));
@@ -373,16 +372,18 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       const prev = sorted[1];
       const ability = mapAssessmentToAbility(cur.category, cur.drill);
       if (!ability) continue;
-      const delta = prev ? cur.percentile - prev.percentile : 0;
+      const currentSgi = clampDisplayedScore(cur.cohortPercentile);
+      const previousSgi = prev ? clampDisplayedScore(prev.cohortPercentile) : currentSgi;
+      const delta = prev ? currentSgi - previousSgi : 0;
       const dir: TrendDirection = !prev ? "flat" : Math.abs(delta) < 0.5 ? "flat" : delta > 0 ? "up" : "down";
       assessmentRows.push({
         assessmentName: `${cur.category} ${cur.drill}`,
         ability,
-        apsScore: Math.round(cur.percentile),
-        rpsScore: Math.round(cur.cohortPercentile),
-        percentile: Math.round(cur.cohortPercentile),
+        apsScore: Math.round(currentSgi),
+        rpsScore: Math.round(currentSgi),
+        percentile: Math.round(currentSgi),
         performanceBand: bandFromPct(cur.cohortPercentile),
-        changeText: prev ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}` : "First record",
+        changeText: prev ? getScoreChange(currentSgi, previousSgi) : "First record",
         changeDirection: dir,
         latestSessionLabel: `Latest: ${cur.isoDate}`,
       });
@@ -410,8 +411,9 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
 
     const byCat = new Map<string, number[]>();
     for (const r of rows) {
-      const k = r.category;
-      byCat.set(k, [...(byCat.get(k) ?? []), r.percentile]);
+      const ability = mapAssessmentToAbility(r.category, r.drill);
+      if (!ability) continue;
+      byCat.set(ability, [...(byCat.get(ability) ?? []), clampDisplayedScore(r.cohortPercentile)]);
     }
     const catMeans = [...byCat.entries()].map(([cat, pcts]) => ({
       cat,
@@ -419,20 +421,21 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     }));
     catMeans.sort((x, y) => y.m - x.m);
     const strengths = catMeans.slice(0, 3).map(
-      (c) => `${c.cat}: ${c.m.toFixed(1)} avg percentile (${rows.filter((r) => r.category === c.cat).length} sessions).`,
+      (c) =>
+        `${c.cat}: ${c.m.toFixed(1)} average SGI (${rows.filter((r) => mapAssessmentToAbility(r.category, r.drill) === c.cat).length} sessions).`,
     );
     const improvements = catMeans
       .slice(-3)
       .reverse()
-      .map((c) => `${c.cat}: ${c.m.toFixed(1)} avg percentile — room to lift vs other areas.`);
+      .map((c) => `${c.cat}: ${c.m.toFixed(1)} average SGI — room to lift vs other areas.`);
 
     const cohortInsight: CohortInsightCopy = {
       title: `How ${profile.playerName} compares with similar players`,
       comparisonGroup: `Compared against ${profile.cohortName} players in the training session extract.`,
-      plainLanguage: `Composite standing near ${formatOrdinal(rps)} of peers in the same tier and gender (from mean drill percentiles).`,
+      plainLanguage: `Current SGI is ${sgi.toFixed(1)}, around the ${formatOrdinal(rpsRaw)} cohort percentile among similar players.`,
       parentFriendly: `Numbers come only from recorded sessions: ${rows.length} rows between ${rows[0]!.isoDate} and ${latest.isoDate}.`,
       rpsDefinition:
-        "RPS here is the cohort percentile of the player's average within-drill percentile — a relative standing score, not revenue.",
+        "SGI is displayed on a 30–99 range and reflects cohort-relative standing by age and gender.",
     };
 
     const arch = archetypeLayout.byPlayer.get(a.key) ?? {
@@ -453,7 +456,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       cohortDistribution: {
         cohortLabel: profile.cohortName,
         sampleSize: cohortPeers.length,
-        playerScore: Math.round(a.composite),
+        playerScore: Math.round(sgi),
         bins,
       },
       assessmentBreakdown: assessmentRows,

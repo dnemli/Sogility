@@ -48,13 +48,13 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
                 tick={{ fill: "#64748b", fontSize: 12 }}
               />
               <YAxis
-                domain={[0, 100]}
+                domain={[30, 99]}
                 tickCount={6}
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: "#64748b", fontSize: 12 }}
                 label={{
-                  value: "RPS (cohort-relative)",
+                  value: "SGI",
                   angle: -90,
                   position: "insideLeft",
                   fill: "#64748b",
@@ -62,13 +62,13 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
                 }}
               />
               <Tooltip
-                formatter={(value: number) => [`${value}`, "RPS"]}
+                formatter={(value: number) => [`${value}`, "SGI"]}
                 labelFormatter={(label) => `${label}`}
               />
               <Line
                 type="monotone"
                 dataKey="rps"
-                name="RPS"
+                name="SGI"
                 stroke="#0f7ac0"
                 strokeWidth={3}
                 dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
@@ -79,10 +79,10 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
           )}
         </div>
         <div className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4">
-          <p className="text-sm font-medium text-slate-500">Latest month (RPS)</p>
+          <p className="text-sm font-medium text-slate-500">Latest month (SGI)</p>
           <p className="mt-1 text-2xl font-semibold text-slate-900">{latest.toFixed(1)}</p>
           <p className="mt-2 text-xs leading-5 text-slate-500">
-            RPS is the average cohort drill percentile across all sessions in that calendar month (UTC), from training_session.csv.
+            SGI is shown on a 30-99 scale and is derived from cohort-relative standing for that month.
           </p>
         </div>
       </div>

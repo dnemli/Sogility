@@ -1,13 +1,10 @@
 import type { AcademyAssessmentRecord, AcademyPerformanceBand } from "../types/academy-overview";
 import { tierLetterToAgeGroupLabel } from "./age-group-labels";
+import { clampDisplayedScore, getTier } from "./dashboard-helpers";
 import type { TrainingSessionRowWithPct } from "./training-session-csv";
 
 function bandFromPercentile(pct: number): AcademyPerformanceBand {
-  if (pct < 20) return "Foundation";
-  if (pct < 40) return "Developing";
-  if (pct < 60) return "Approaching";
-  if (pct < 80) return "Strong";
-  return "Elite";
+  return getTier(pct);
 }
 
 /** One academy row per training row; bands and scores come from within-(category, drill) percentiles. */
@@ -24,7 +21,7 @@ export function buildAcademyAssessmentRecords(rows: TrainingSessionRowWithPct[])
       gender,
       cohort: `${age_group} ${gender}`,
       performance_band: bandFromPercentile(r.percentile),
-      assessment_score: pct,
+      assessment_score: clampDisplayedScore(pct),
     };
   });
 }
