@@ -22,6 +22,7 @@ import { cn } from "../lib/utils";
 import { PlayerSearch } from "../components/dashboard/player-search";
 import { ABILITY_ORDER } from "../lib/assessment-to-ability";
 import { bandTextMap } from "../lib/dashboard-helpers";
+import { ScoreRing, SkillBar, SectionHeader } from "../components/visual";
 import type { PlayerDashboardView } from "../types/dashboard";
 
 type RoleView = "Trainer View" | "Parent/Player View";
@@ -164,155 +165,130 @@ function ParentPlayerFlow({
 
   return (
     <div className="flex flex-col gap-6">
-      <SurfaceCard>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Parent / Player View
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Viewing: {currentPlayer.profile.playerName}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {currentPlayer.profile.ageGroup} · {currentPlayer.profile.gender} · {currentPlayer.profile.cohortName}
-            </p>
-          </div>
-          <PlayerSearch
-            players={dashboardCollection.players}
-            selectedPlayerId={currentPlayer.id}
-            onSelectPlayer={onPlayerChange}
-          />
+      <div className="mx-auto w-full max-w-screen-sm">
+        <div className="inline-flex w-full rounded-full border border-[#1E2D40] bg-[#131F2E] p-1">
+          {parentTabs.map((tab) => {
+            const isActive = tab === parentTab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setParentTab(tab)}
+                className={cn(
+                  "flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                  isActive ? "bg-[#3ECF8E] text-[#0F1923]" : "text-[#9AB0C0] hover:text-[#E0E8F0]",
+                )}
+              >
+                {tab}
+              </button>
+            );
+          })}
         </div>
-      </SurfaceCard>
-
-      <Tabs tabs={parentTabs} activeTab={parentTab} onChange={setParentTab} />
+      </div>
 
       {parentTab === "Overview" ? (
-        <>
-          <SurfaceCard>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="md:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Selected player
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold text-slate-900">
-                  {currentPlayer.profile.playerName}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  {currentPlayer.profile.ageGroup} · {currentPlayer.profile.gender}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">Last updated: {lastUpdated}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Overall SGI</p>
-                <p className="mt-2 text-4xl font-semibold text-slate-900">{overallSgi}</p>
+        <section className="mx-auto w-full max-w-screen-sm py-2">
+          <div className="flex w-full flex-col gap-4">
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                Switch Player (Demo)
+              </p>
+              <PlayerSearch
+                players={dashboardCollection.players}
+                selectedPlayerId={currentPlayer.id}
+                onSelectPlayer={onPlayerChange}
+                mode="darkCompact"
+              />
+            </SurfaceCard>
+
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <SectionHeader
+                overline="Player Profile"
+                title={currentPlayer.profile.playerName}
+                description={`${currentPlayer.profile.ageGroup} · ${currentPlayer.profile.gender}`}
+              />
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <ScoreRing score={Number(overallSgi)} size={178} />
                 <span
                   className={cn(
-                    "mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
                     overallTier in bandTextMap
                       ? bandTextMap[overallTier as keyof typeof bandTextMap]
-                      : "bg-slate-100 text-slate-700",
+                      : "bg-[#1E2D40] text-[#9AB0C0]",
                   )}
                 >
                   {overallTier}
                 </span>
+                <span className="inline-flex rounded-full bg-[#1E2D40] px-3 py-1 text-xs font-medium text-[#9AB0C0]">
+                  Last updated: {lastUpdated}
+                </span>
               </div>
-            </div>
-          </SurfaceCard>
-          <SurfaceCard>
-            <div className="flex flex-col gap-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Skill breakdown</p>
-              <div className="grid gap-3">
-                {ABILITY_ORDER.map((skill) => {
+            </SurfaceCard>
+
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <SectionHeader overline="Skill Breakdown" title="Five core skills" />
+              <div className="mt-4 grid gap-3">
+                {(["Passing", "Vision", "Dribbling", "Agility", "First Touch"] as const).map((skill) => {
                   const row = currentPlayer.abilityBreakdown.find((entry) => entry.ability === skill);
                   const score = row?.avgAps ?? 30;
                   const tier = row?.aggregateBand ?? "Foundation";
-                  return (
-                    <div key={skill} className="rounded-2xl border border-slate-200/80 bg-white/70 p-3">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-slate-900">{skill}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-slate-900">{score.toFixed(1)}</span>
-                          <span
-                            className={cn(
-                              "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                              bandTextMap[tier],
-                            )}
-                          >
-                            {tier}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-                        <div
-                          className="h-full rounded-full bg-slate-900"
-                          style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
+                  return <SkillBar key={skill} name={skill} score={score} tier={tier} />;
                 })}
               </div>
-            </div>
-          </SurfaceCard>
-        </>
+            </SurfaceCard>
+          </div>
+        </section>
       ) : null}
 
       {parentTab === "Progress" ? (
-        <>
-          <ProgressTrendChart
-            title={`${currentPlayer.profile.playerName} progress`}
-            description="Overall SGI trend across recorded months."
-            points={visibleTrend}
-          />
+        <section className="mx-auto w-full max-w-screen-sm py-2">
+          <div className="flex w-full flex-col gap-4">
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                Switch Player (Demo)
+              </p>
+              <PlayerSearch
+                players={dashboardCollection.players}
+                selectedPlayerId={currentPlayer.id}
+                onSelectPlayer={onPlayerChange}
+                mode="darkCompact"
+              />
+            </SurfaceCard>
 
-          <SurfaceCard>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Skill progress over time
-                </p>
-                <select
-                  value={selectedSkill}
-                  onChange={(event) => setSelectedSkill(event.target.value as (typeof ABILITY_ORDER)[number])}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900"
-                >
-                  {ABILITY_ORDER.map((skill) => (
-                    <option key={skill} value={skill}>
-                      {skill}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="h-[260px]">
-                {selectedSkillProgress.length === 0 ? (
-                  <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-6 text-center text-sm text-slate-600">
-                    No monthly progress data available for {selectedSkill} yet.
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <SectionHeader
+                overline="Progress"
+                title={`${currentPlayer.profile.playerName}`}
+                description="Overall SGI trend across recorded months."
+              />
+              <div className="mt-4 h-[280px]">
+                {visibleTrend.length === 0 ? (
+                  <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
+                    No monthly progress data available yet.
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={selectedSkillProgress} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.28)" />
+                    <LineChart data={visibleTrend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
                       <XAxis
                         dataKey="label"
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "#64748b", fontSize: 12 }}
+                        tick={{ fill: "#9AB0C0", fontSize: 12 }}
                       />
                       <YAxis
                         domain={[30, 99]}
                         tickCount={6}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "#64748b", fontSize: 12 }}
+                        tick={{ fill: "#9AB0C0", fontSize: 12 }}
                       />
-                      <Tooltip
-                        formatter={(value: number) => [`${value}`, "SGI"]}
-                        labelFormatter={(label) => `${label}`}
-                      />
+                      <Tooltip formatter={(value: number) => [`${value}`, "SGI"]} labelFormatter={(label) => `${label}`} />
                       <Line
                         type="monotone"
-                        dataKey="score"
+                        dataKey="rps"
                         name="SGI"
-                        stroke="#0f172a"
+                        stroke="#3ECF8E"
                         strokeWidth={3}
                         dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
                         activeDot={{ r: 4 }}
@@ -321,49 +297,106 @@ function ParentPlayerFlow({
                   </ResponsiveContainer>
                 )}
               </div>
-            </div>
-          </SurfaceCard>
+            </SurfaceCard>
 
-          <SurfaceCard>
-            <div className="flex flex-col gap-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Assessment history
-              </p>
-              {currentPlayer.assessmentHistory.length === 0 ? (
-                <p className="text-sm text-slate-600">No assessment history available.</p>
-              ) : (
-                <div className="max-h-[320px] overflow-auto rounded-2xl border border-slate-200/80">
-                  <table className="w-full border-collapse text-sm">
-                    <thead className="sticky top-0 bg-slate-50 text-left text-xs uppercase tracking-[0.14em] text-slate-500">
-                      <tr>
-                        <th className="px-3 py-2">Date</th>
-                        <th className="px-3 py-2">Assessment</th>
-                        <th className="px-3 py-2">Skill</th>
-                        <th className="px-3 py-2">SGI</th>
-                        <th className="px-3 py-2">Tier</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentPlayer.assessmentHistory.map((entry) => (
-                        <tr key={`${entry.date}-${entry.assessmentName}`} className="border-t border-slate-100">
-                          <td className="px-3 py-2 text-slate-700">{entry.date}</td>
-                          <td className="px-3 py-2 text-slate-900">{entry.assessmentName}</td>
-                          <td className="px-3 py-2 text-slate-700">{entry.ability}</td>
-                          <td className="px-3 py-2 font-semibold text-slate-900">{entry.score.toFixed(1)}</td>
-                          <td className="px-3 py-2">
-                            <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", bandTextMap[entry.tier])}>
-                              {entry.tier}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                    Skill progress over time
+                  </p>
+                  <select
+                    value={selectedSkill}
+                    onChange={(event) => setSelectedSkill(event.target.value as (typeof ABILITY_ORDER)[number])}
+                    className="rounded-xl border border-[#1E2D40] bg-[#0F2236] px-3 py-2 text-sm font-medium text-[#E0E8F0]"
+                  >
+                    {ABILITY_ORDER.map((skill) => (
+                      <option key={skill} value={skill}>
+                        {skill}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
-            </div>
-          </SurfaceCard>
-        </>
+                <div className="h-[260px]">
+                  {selectedSkillProgress.length === 0 ? (
+                    <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
+                      No monthly progress data available for {selectedSkill} yet.
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={selectedSkillProgress} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
+                        <XAxis
+                          dataKey="label"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: "#9AB0C0", fontSize: 12 }}
+                        />
+                        <YAxis
+                          domain={[30, 99]}
+                          tickCount={6}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: "#9AB0C0", fontSize: 12 }}
+                        />
+                        <Tooltip formatter={(value: number) => [`${value}`, "SGI"]} labelFormatter={(label) => `${label}`} />
+                        <Line
+                          type="monotone"
+                          dataKey="score"
+                          name="SGI"
+                          stroke="#3ECF8E"
+                          strokeWidth={3}
+                          dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
+                          activeDot={{ r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </SurfaceCard>
+
+            <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+              <div className="flex flex-col gap-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                  Assessment history
+                </p>
+                {currentPlayer.assessmentHistory.length === 0 ? (
+                  <p className="text-sm text-[#9AB0C0]">No assessment history available.</p>
+                ) : (
+                  <div className="max-h-[320px] overflow-auto rounded-2xl border border-[#1E2D40]">
+                    <table className="w-full border-collapse text-sm">
+                      <thead className="sticky top-0 bg-[#0F2236] text-left text-xs uppercase tracking-[0.14em] text-[#9AB0C0]">
+                        <tr>
+                          <th className="px-3 py-2">Date</th>
+                          <th className="px-3 py-2">Assessment</th>
+                          <th className="px-3 py-2">Skill</th>
+                          <th className="px-3 py-2">SGI</th>
+                          <th className="px-3 py-2">Tier</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayer.assessmentHistory.map((entry) => (
+                          <tr key={`${entry.date}-${entry.assessmentName}`} className="border-t border-[#1E2D40]">
+                            <td className="px-3 py-2 text-[#9AB0C0]">{entry.date}</td>
+                            <td className="px-3 py-2 text-[#E0E8F0]">{entry.assessmentName}</td>
+                            <td className="px-3 py-2 text-[#9AB0C0]">{entry.ability}</td>
+                            <td className="px-3 py-2 font-semibold text-[#E0E8F0]">{entry.score.toFixed(1)}</td>
+                            <td className="px-3 py-2">
+                              <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", bandTextMap[entry.tier])}>
+                                {entry.tier}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </SurfaceCard>
+          </div>
+        </section>
       ) : null}
     </div>
   );
