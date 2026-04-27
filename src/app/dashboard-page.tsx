@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, ClipboardPlus, Search } from "lucide-react";
 import { AcademyOverviewPage } from "./academy-overview-page";
 import { DashboardHeader } from "../components/dashboard/dashboard-header";
 import { KpiSection } from "../components/dashboard/kpi-section";
@@ -27,12 +27,13 @@ import { ScoreRing, SkillBar, SectionHeader } from "../components/visual";
 import type { PlayerDashboardView } from "../types/dashboard";
 
 type RoleView = "Trainer View" | "Parent/Player View";
-type TrainerTab = "Dashboard/Home" | "Players";
+type TrainerTab = "Dashboard" | "Players";
 type TrainerPlayersTab = "Abilities" | "Progress over time";
 type ParentTab = "Overview" | "Progress";
 type TrainerPlayersView = "list" | "detail" | "newAssessment";
+type NewAssessmentReturnView = "list" | "detail";
 
-const trainerTabs: TrainerTab[] = ["Dashboard/Home", "Players"];
+const trainerTabs: TrainerTab[] = ["Players", "Dashboard"];
 const trainerPlayerTabs: TrainerPlayersTab[] = ["Abilities", "Progress over time"];
 const parentTabs: ParentTab[] = ["Overview", "Progress"];
 
@@ -85,9 +86,10 @@ function TrainerFlow({
   selectedPlayerId,
   onPlayerChange,
 }: Pick<DashboardPageProps, "selectedPlayerId" | "onPlayerChange">) {
-  const [trainerTab, setTrainerTab] = useState<TrainerTab>("Dashboard/Home");
+  const [trainerTab, setTrainerTab] = useState<TrainerTab>("Players");
   const [trainerPlayerTab, setTrainerPlayerTab] = useState<TrainerPlayersTab>("Abilities");
   const [playersView, setPlayersView] = useState<TrainerPlayersView>("list");
+  const [newAssessmentReturnView, setNewAssessmentReturnView] = useState<NewAssessmentReturnView>("detail");
   const [playerQuery, setPlayerQuery] = useState("");
   const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
   const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
@@ -95,6 +97,12 @@ function TrainerFlow({
     player.profile.playerName.toLowerCase().includes(playerQuery.trim().toLowerCase()),
   );
   const shouldShowFoundationLegend = dashboardCollection.players.some((player) => getOverallScore(player) < 30);
+  const membersCount = dashboardCollection.players.length;
+  const avgSgi =
+    dashboardCollection.players.length === 0
+      ? 0
+      : dashboardCollection.players.reduce((sum, player) => sum + getOverallScore(player), 0) /
+        dashboardCollection.players.length;
 
   const openPlayerDetail = (playerId: string) => {
     onPlayerChange(playerId);
@@ -109,7 +117,7 @@ function TrainerFlow({
     <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <Tabs tabs={trainerTabs} activeTab={trainerTab} onChange={handleTrainerTabChange} />
 
-      {trainerTab === "Dashboard/Home" ? (
+      {trainerTab === "Dashboard" ? (
         <AcademyOverviewPage />
       ) : null}
 
@@ -118,6 +126,29 @@ function TrainerFlow({
           {playersView === "list" ? (
             <section className="mx-auto flex w-full max-w-[800px] flex-col gap-4 pt-6">
               <h2 className="text-[36px] font-bold leading-none tracking-tight text-[#E0E8F0]">Players</h2>
+
+              <button
+                type="button"
+                className="flex h-16 w-full items-center justify-center gap-3 rounded-3xl bg-[#3ECF8E] text-[24px] font-semibold leading-none text-[#0F1923]"
+                onClick={() => {
+                  setNewAssessmentReturnView("list");
+                  setPlayersView("newAssessment");
+                }}
+              >
+                <ClipboardPlus size={28} strokeWidth={2.25} />
+                Start new assessment
+              </button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <SurfaceCard className="rounded-3xl bg-[#102136] px-5 py-4">
+                  <p className="text-[48px] font-bold leading-none text-[#3ECF8E]">{membersCount}</p>
+                  <p className="mt-2 text-[16px] text-[#9AB0C0]">Members</p>
+                </SurfaceCard>
+                <SurfaceCard className="rounded-3xl bg-[#102136] px-5 py-4">
+                  <p className="text-[48px] font-bold leading-none text-[#E0E8F0]">{Math.round(avgSgi)}</p>
+                  <p className="mt-2 text-[16px] text-[#9AB0C0]">Avg SGI</p>
+                </SurfaceCard>
+              </div>
 
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6A8090]" />
@@ -220,7 +251,10 @@ function TrainerFlow({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPlayersView("newAssessment")}
+                  onClick={() => {
+                    setNewAssessmentReturnView("detail");
+                    setPlayersView("newAssessment");
+                  }}
                   className="rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923]"
                 >
                   Score New Assessment
@@ -295,7 +329,6 @@ function TrainerFlow({
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">New Assessment</p>
                   <h2 className="text-xl font-semibold text-[#E0E8F0]">Score New Assessment</h2>
-                  <p className="mt-1 text-sm text-[#9AB0C0]">Player: {currentPlayer.profile.playerName}</p>
                 </div>
                 <p className="text-sm text-[#9AB0C0]">
                   Assessment input flow coming next phase. This placeholder remains tied to the selected player.
@@ -303,7 +336,7 @@ function TrainerFlow({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setPlayersView("detail")}
+                    onClick={() => setPlayersView(newAssessmentReturnView)}
                     className="rounded-full border border-[#1E2D40] bg-[#131F2E] px-4 py-2 text-sm font-semibold text-[#9AB0C0] hover:text-[#E0E8F0]"
                   >
                     Cancel
