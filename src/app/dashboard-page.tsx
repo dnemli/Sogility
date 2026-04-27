@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ArrowLeft, Search } from "lucide-react";
 import { AcademyOverviewPage } from "./academy-overview-page";
 import { DashboardHeader } from "../components/dashboard/dashboard-header";
 import { KpiSection } from "../components/dashboard/kpi-section";
@@ -21,16 +22,17 @@ import { dashboardCollection } from "../data/training-data";
 import { cn } from "../lib/utils";
 import { PlayerSearch } from "../components/dashboard/player-search";
 import { ABILITY_ORDER } from "../lib/assessment-to-ability";
-import { bandTextMap } from "../lib/dashboard-helpers";
+import { bandTextMap, getTier, type ScoreTier } from "../lib/dashboard-helpers";
 import { ScoreRing, SkillBar, SectionHeader } from "../components/visual";
 import type { PlayerDashboardView } from "../types/dashboard";
 
 type RoleView = "Trainer View" | "Parent/Player View";
-type TrainerTab = "Dashboard/Home" | "Players" | "New Assessment";
+type TrainerTab = "Dashboard/Home" | "Players";
 type TrainerPlayersTab = "Abilities" | "Progress over time";
 type ParentTab = "Overview" | "Progress";
+type TrainerPlayersView = "list" | "detail" | "newAssessment";
 
-const trainerTabs: TrainerTab[] = ["Dashboard/Home", "Players", "New Assessment"];
+const trainerTabs: TrainerTab[] = ["Dashboard/Home", "Players"];
 const trainerPlayerTabs: TrainerPlayersTab[] = ["Abilities", "Progress over time"];
 const parentTabs: ParentTab[] = ["Overview", "Progress"];
 
@@ -50,18 +52,62 @@ function resolveSelectedPlayer(selectedPlayerId: string): PlayerDashboardView {
   );
 }
 
+function getOverallScore(player: PlayerDashboardView): number {
+  const overall = player.summaryMetrics.find((metric) => metric.label === "Overall SGI")?.value ?? "";
+  const parsed = Number.parseFloat(overall);
+  return Number.isFinite(parsed) ? parsed : 30;
+}
+
+function getOverallTier(player: PlayerDashboardView): ScoreTier {
+  const tier = player.summaryMetrics.find((metric) => metric.label === "SGI tier")?.value;
+  if (tier && tier in bandTextMap) return tier as ScoreTier;
+  return getTier(getOverallScore(player));
+}
+
+function initials(playerName: string): string {
+  return playerName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function scoreBarColor(tier: ScoreTier): string {
+  if (tier === "Foundation") return "#FB7185";
+  if (tier === "Developing") return "#FCD34D";
+  if (tier === "Approaching") return "#A3E635";
+  if (tier === "Strong") return "#38BDF8";
+  return "#C4B5FD";
+}
+
 function TrainerFlow({
   selectedPlayerId,
   onPlayerChange,
 }: Pick<DashboardPageProps, "selectedPlayerId" | "onPlayerChange">) {
   const [trainerTab, setTrainerTab] = useState<TrainerTab>("Dashboard/Home");
   const [trainerPlayerTab, setTrainerPlayerTab] = useState<TrainerPlayersTab>("Abilities");
+  const [playersView, setPlayersView] = useState<TrainerPlayersView>("list");
+  const [playerQuery, setPlayerQuery] = useState("");
   const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
   const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
+  const filteredPlayers = dashboardCollection.players.filter((player) =>
+    player.profile.playerName.toLowerCase().includes(playerQuery.trim().toLowerCase()),
+  );
+  const shouldShowFoundationLegend = dashboardCollection.players.some((player) => getOverallScore(player) < 30);
+
+  const openPlayerDetail = (playerId: string) => {
+    onPlayerChange(playerId);
+    setPlayersView("detail");
+  };
+  const handleTrainerTabChange = (tab: TrainerTab) => {
+    setTrainerTab(tab);
+    if (tab === "Players") setPlayersView("list");
+  };
 
   return (
-    <section className="mx-auto flex w-full max-w-screen-sm flex-col gap-6">
-      <Tabs tabs={trainerTabs} activeTab={trainerTab} onChange={setTrainerTab} />
+    <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+      <Tabs tabs={trainerTabs} activeTab={trainerTab} onChange={handleTrainerTabChange} />
 
       {trainerTab === "Dashboard/Home" ? (
         <AcademyOverviewPage />
@@ -69,80 +115,211 @@ function TrainerFlow({
 
       {trainerTab === "Players" ? (
         <>
-          <DashboardHeader
-            dashboardCollection={dashboardCollection}
-            displayProfile={currentPlayer.profile}
-            selectedPlayerId={currentPlayer.id}
-            onPlayerChange={onPlayerChange}
-          />
+          {playersView === "list" ? (
+            <section className="mx-auto flex w-full max-w-[800px] flex-col gap-4 pt-6">
+              <h2 className="text-[36px] font-bold leading-none tracking-tight text-[#E0E8F0]">Players</h2>
 
-          <KpiSection metrics={currentPlayer.summaryMetrics} />
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6A8090]" />
+                <input
+                  value={playerQuery}
+                  onChange={(event) => setPlayerQuery(event.target.value)}
+                  placeholder="Search players..."
+                  className="h-14 w-full rounded-2xl border border-[#1E2D40] bg-[#131F2E] pl-12 pr-4 text-[18px] font-medium leading-none text-[#E0E8F0] placeholder:text-[#6A8090] outline-none"
+                />
+              </div>
 
-          <div className="flex flex-col gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
-              Player detail views
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {trainerPlayerTabs.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setTrainerPlayerTab(tab)}
-                  className={cn(
-                    "rounded-full border px-3.5 py-2 text-xs font-semibold transition sm:text-sm",
-                    trainerPlayerTab === tab
-                      ? "border-[#3ECF8E] bg-[#3ECF8E] text-[#0F1923] shadow-none"
-                      : "border-[#1E2D40] bg-[#131F2E] text-[#9AB0C0] hover:text-[#E0E8F0]",
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
+              <div className="mb-1 flex flex-wrap items-center gap-5 text-[15px] font-medium text-[#9AB0C0]">
+                {shouldShowFoundationLegend ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#FB7185]" />
+                    Foundation
+                  </span>
+                ) : null}
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#FCD34D]" />
+                  Developing
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#A3E635]" />
+                  Approaching
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#38BDF8]" />
+                  Strong
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#C4B5FD]" />
+                  Elite
+                </span>
+              </div>
 
-          {trainerPlayerTab === "Progress over time" ? (
-            <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-              <ProgressTrendChart
-                title="Score over time"
-                description="Monthly SGI Score trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
-                points={visibleTrend}
-              />
-              <DistributionChart
-                title="Cohort distribution snapshot"
-                description="Where this player's SGI Score sits within the peer distribution."
-                distribution={{
-                  ...currentPlayer.cohortDistribution,
-                  cohortLabel: currentPlayer.profile.cohortName,
-                }}
-              />
+              <div className="flex flex-col gap-4">
+                {filteredPlayers.map((player) => {
+                  const score = getOverallScore(player);
+                  const tier = getOverallTier(player);
+                  const assessmentDate = player.assessmentHistory[0]?.date ?? "No assessments yet";
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      onClick={() => openPlayerDetail(player.id)}
+                      className="min-h-[110px] rounded-3xl border border-[#1E2D40] bg-[#102136] px-5 py-[18px] text-left transition hover:border-[#2B4360]"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-4">
+                          <span
+                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-[3px] text-[19px] font-bold"
+                            style={{ borderColor: scoreBarColor(tier), color: scoreBarColor(tier) }}
+                          >
+                            {initials(player.profile.playerName)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-[24px] font-semibold leading-none text-[#E0E8F0]">{player.profile.playerName}</p>
+                            <p className="mt-1.5 text-[16px] leading-none text-[#9AB0C0]">{assessmentDate}</p>
+                          </div>
+                        </div>
+                        <div
+                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-[28px] font-bold leading-none"
+                          style={{ borderColor: scoreBarColor(tier), color: scoreBarColor(tier) }}
+                        >
+                          {Math.round(score)}
+                        </div>
+                      </div>
+
+                      <div className="ml-[72px] mt-3 h-1.5 overflow-hidden rounded-full bg-[#1E2D40]">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, score))}%`,
+                            backgroundColor: scoreBarColor(tier),
+                          }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {filteredPlayers.length === 0 ? (
+                  <SurfaceCard className="text-sm text-[#9AB0C0]">No players match your search.</SurfaceCard>
+                ) : null}
+              </div>
             </section>
           ) : null}
 
-          {trainerPlayerTab === "Abilities" ? (
-            <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-              <AssessmentBreakdown
-                abilities={currentPlayer.abilityBreakdown}
-                playerName={currentPlayer.profile.playerName}
+          {playersView === "detail" ? (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPlayersView("list")}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#1E2D40] bg-[#131F2E] px-3 py-2 text-sm font-semibold text-[#9AB0C0] hover:text-[#E0E8F0]"
+                >
+                  <ArrowLeft size={16} />
+                  Back to Players
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlayersView("newAssessment")}
+                  className="rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923]"
+                >
+                  Score New Assessment
+                </button>
+              </div>
+
+              <DashboardHeader
+                dashboardCollection={dashboardCollection}
+                displayProfile={currentPlayer.profile}
+                selectedPlayerId={currentPlayer.id}
+                onPlayerChange={onPlayerChange}
               />
-              <ArchetypeInsightCard archetype={currentPlayer.archetype} />
-            </section>
+
+              <KpiSection metrics={currentPlayer.summaryMetrics} />
+
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                  Player detail views
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {trainerPlayerTabs.map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setTrainerPlayerTab(tab)}
+                      className={cn(
+                        "rounded-full border px-3.5 py-2 text-xs font-semibold transition sm:text-sm",
+                        trainerPlayerTab === tab
+                          ? "border-[#3ECF8E] bg-[#3ECF8E] text-[#0F1923] shadow-none"
+                          : "border-[#1E2D40] bg-[#131F2E] text-[#9AB0C0] hover:text-[#E0E8F0]",
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {trainerPlayerTab === "Progress over time" ? (
+                <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+                  <ProgressTrendChart
+                    title="Score over time"
+                    description="Monthly SGI Score trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
+                    points={visibleTrend}
+                  />
+                  <DistributionChart
+                    title="Cohort distribution snapshot"
+                    description="Where this player's SGI Score sits within the peer distribution."
+                    distribution={{
+                      ...currentPlayer.cohortDistribution,
+                      cohortLabel: currentPlayer.profile.cohortName,
+                    }}
+                  />
+                </section>
+              ) : null}
+
+              {trainerPlayerTab === "Abilities" ? (
+                <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+                  <AssessmentBreakdown
+                    abilities={currentPlayer.abilityBreakdown}
+                    playerName={currentPlayer.profile.playerName}
+                  />
+                  <ArchetypeInsightCard archetype={currentPlayer.archetype} />
+                </section>
+              ) : null}
+            </>
+          ) : null}
+
+          {playersView === "newAssessment" ? (
+            <SurfaceCard>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">New Assessment</p>
+                  <h2 className="text-xl font-semibold text-[#E0E8F0]">Score New Assessment</h2>
+                  <p className="mt-1 text-sm text-[#9AB0C0]">Player: {currentPlayer.profile.playerName}</p>
+                </div>
+                <p className="text-sm text-[#9AB0C0]">
+                  Assessment input flow coming next phase. This placeholder remains tied to the selected player.
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPlayersView("detail")}
+                    className="rounded-full border border-[#1E2D40] bg-[#131F2E] px-4 py-2 text-sm font-semibold text-[#9AB0C0] hover:text-[#E0E8F0]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPlayersView("detail")}
+                    className="rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923]"
+                  >
+                    Save Assessment
+                  </button>
+                </div>
+              </div>
+            </SurfaceCard>
           ) : null}
         </>
-      ) : null}
-
-      {trainerTab === "New Assessment" ? (
-        <SurfaceCard>
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
-              New Assessment
-            </p>
-            <h2 className="text-xl font-semibold text-[#E0E8F0]">Assessment input flow coming next phase</h2>
-            <p className="text-sm text-[#9AB0C0]">
-              Placeholder only for now. Existing scoring and player data remain unchanged in this phase.
-            </p>
-          </div>
-        </SurfaceCard>
       ) : null}
     </section>
   );
