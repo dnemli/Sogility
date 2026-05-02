@@ -16,9 +16,15 @@ type DistributionChartProps = {
   title: string;
   description: string;
   distribution: CohortDistribution;
+  forceMobileLayout?: boolean;
 };
 
-export function DistributionChart({ title, description, distribution }: DistributionChartProps) {
+export function DistributionChart({
+  title,
+  description,
+  distribution,
+  forceMobileLayout = false,
+}: DistributionChartProps) {
   return (
     <SurfaceCard className="h-full">
       <div className="flex h-full flex-col gap-6">
@@ -31,7 +37,7 @@ export function DistributionChart({ title, description, distribution }: Distribu
             </span>
           </div>
         </div>
-        <div className="h-[320px]">
+        <div className={forceMobileLayout ? "h-[250px]" : "h-[320px]"}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={distribution.bins} margin={{ top: 12, right: 18, left: -22, bottom: 4 }}>
               <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
@@ -68,7 +74,13 @@ export function DistributionChart({ title, description, distribution }: Distribu
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        <div className="grid gap-3 rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4 sm:grid-cols-3">
+        <div
+          className={
+            forceMobileLayout
+              ? "grid grid-cols-1 gap-3 rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4"
+              : "grid gap-3 rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4 sm:grid-cols-3"
+          }
+        >
           <div>
             <p className="text-sm font-medium text-[#6A8090]">Comparison group</p>
             <p className="mt-1 text-base font-semibold text-[#E0E8F0]">{distribution.cohortLabel}</p>

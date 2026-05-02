@@ -15,15 +15,27 @@ type ProgressTrendChartProps = {
   title: string;
   description: string;
   points: ProgressPoint[];
+  forceMobileLayout?: boolean;
 };
 
-export function ProgressTrendChart({ title, description, points }: ProgressTrendChartProps) {
+export function ProgressTrendChart({
+  title,
+  description,
+  points,
+  forceMobileLayout = false,
+}: ProgressTrendChartProps) {
   const latest = points[points.length - 1]?.rps ?? 0;
 
   return (
     <SurfaceCard className="h-full">
       <div className="flex h-full flex-col gap-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div
+          className={
+            forceMobileLayout
+              ? "flex flex-col gap-3"
+              : "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+          }
+        >
           <SectionHeading eyebrow="Progress Over Time" title={title} description={description} />
           <span className="w-fit rounded-full bg-[#1E2D40] px-3 py-1 text-xs font-semibold text-[#9AB0C0]">
             {points.length === 0
@@ -31,7 +43,7 @@ export function ProgressTrendChart({ title, description, points }: ProgressTrend
               : `Showing ${points.length} month${points.length === 1 ? "" : "s"}`}
           </span>
         </div>
-        <div className="h-[320px]">
+        <div className={forceMobileLayout ? "h-[250px]" : "h-[320px]"}>
           {points.length === 0 ? (
             <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
               No session months in the training extract for this player.

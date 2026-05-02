@@ -101,6 +101,23 @@ export type AssessmentHistoryItem = {
   tier: PerformanceBand;
 };
 
+/** Trainer-entered raw drill assessment (prototype local state; not merged into CSV pipeline). */
+export type TrainerSavedAssessment = {
+  id: string;
+  playerId: string;
+  category: AbilityName;
+  equipment: string;
+  assessmentName: string;
+  skillFocus: string;
+  description: string;
+  duration: string;
+  rawScore: number;
+  scoreUnit?: string;
+  timestamp: string;
+  notes?: string;
+  drillId: string;
+};
+
 export type ArchetypePoint = {
   label: string;
   x: number;

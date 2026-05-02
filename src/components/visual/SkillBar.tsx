@@ -32,15 +32,16 @@ function getTierKey(score: number, tierLabel: string): ScoreTier {
 
 export function SkillBar({ name, score, tier, min = 30, max = 99 }: SkillBarProps) {
   const clamped = Math.max(min, Math.min(max, score));
+  const visualPercent = Math.max(0, Math.min(100, score));
   const tierKey = getTierKey(clamped, tier);
-  const markerPosition = `${Math.max(0, Math.min(100, clamped))}%`;
+  const markerPosition = `${visualPercent}%`;
 
   return (
-    <div className="space-y-2 rounded-xl border border-[#1E2D40] bg-[#131F2E] p-3.5">
+    <div className="space-y-2 rounded-xl border border-[#1E2D40] bg-[#131F2E] p-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-[#E0E8F0]">{name}</span>
+        <span className="text-[13px] font-medium text-[#E0E8F0]">{name}</span>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-[#E0E8F0]">{clamped.toFixed(1)}</span>
+          <span className="text-[13px] font-semibold text-[#E0E8F0]">{clamped.toFixed(1)}</span>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${bandTextMap[tierKey]}`}
           >
@@ -54,7 +55,7 @@ export function SkillBar({ name, score, tier, min = 30, max = 99 }: SkillBarProp
             {tierBands.map(({ band, start, end }) => (
               <div
                 key={band}
-                className="h-5"
+                className="h-4"
                 style={{
                   width: `${end - start}%`,
                   backgroundColor: tierFillColorMap[band],
@@ -63,7 +64,7 @@ export function SkillBar({ name, score, tier, min = 30, max = 99 }: SkillBarProp
             ))}
           </div>
           <div
-            className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#0F1923] bg-white shadow-sm"
+            className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0F1923] bg-white shadow-sm"
             style={{ left: markerPosition }}
             aria-hidden
           />

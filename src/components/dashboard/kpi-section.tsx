@@ -3,9 +3,10 @@ import type { SummaryMetric } from "../../types/dashboard";
 
 type KpiSectionProps = {
   metrics: SummaryMetric[];
+  forceMobileLayout?: boolean;
 };
 
-export function KpiSection({ metrics }: KpiSectionProps) {
+export function KpiSection({ metrics, forceMobileLayout = false }: KpiSectionProps) {
   const gridClass =
     metrics.length <= 2
       ? "grid gap-4 md:grid-cols-2"
@@ -15,7 +16,7 @@ export function KpiSection({ metrics }: KpiSectionProps) {
   return (
     <section className={gridClass}>
       {metrics.map((metric) => (
-        <KpiCard key={metric.label} metric={metric} />
+        <KpiCard key={metric.label} metric={metric} forceMobileLayout={forceMobileLayout} />
       ))}
     </section>
   );

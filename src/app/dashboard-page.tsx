@@ -9,7 +9,6 @@ import {
   YAxis,
 } from "recharts";
 import { ArrowLeft, ClipboardPlus, Search } from "lucide-react";
-import { AcademyOverviewPage } from "./academy-overview-page";
 import { DashboardHeader } from "../components/dashboard/dashboard-header";
 import { KpiSection } from "../components/dashboard/kpi-section";
 import { ProgressTrendChart } from "../components/dashboard/progress-trend-chart";
@@ -17,23 +16,21 @@ import { DistributionChart } from "../components/dashboard/distribution-chart";
 import { AssessmentBreakdown } from "../components/dashboard/assessment-breakdown";
 import { ArchetypeInsightCard } from "../components/dashboard/archetype-insight-card";
 import { SurfaceCard } from "../components/ui/card";
-import { Tabs } from "../components/ui/tabs";
 import { dashboardCollection } from "../data/training-data";
 import { cn } from "../lib/utils";
 import { PlayerSearch } from "../components/dashboard/player-search";
 import { ABILITY_ORDER } from "../lib/assessment-to-ability";
 import { bandTextMap, getTier, type ScoreTier } from "../lib/dashboard-helpers";
 import { ScoreRing, SkillBar, SectionHeader } from "../components/visual";
-import type { PlayerDashboardView } from "../types/dashboard";
+import type { PlayerDashboardView, TrainerSavedAssessment } from "../types/dashboard";
+import { TrainerNewAssessmentForm } from "../components/dashboard/trainer-new-assessment-form";
 
 type RoleView = "Trainer View" | "Parent/Player View";
-type TrainerTab = "Dashboard" | "Players";
 type TrainerPlayersTab = "Abilities" | "Progress over time";
 type ParentTab = "Overview" | "Progress";
 type TrainerPlayersView = "list" | "detail" | "newAssessment";
 type NewAssessmentReturnView = "list" | "detail";
 
-const trainerTabs: TrainerTab[] = ["Players", "Dashboard"];
 const trainerPlayerTabs: TrainerPlayersTab[] = ["Abilities", "Progress over time"];
 const parentTabs: ParentTab[] = ["Overview", "Progress"];
 
@@ -42,6 +39,7 @@ const PROGRESS_POINTS = 6;
 
 type DashboardPageProps = {
   role: RoleView;
+  isPhoneView: boolean;
   selectedPlayerId: string;
   onPlayerChange: (playerId: string) => void;
 };
@@ -82,14 +80,19 @@ function scoreBarColor(tier: ScoreTier): string {
   return "#C4B5FD";
 }
 
+function parseIsoDate(value: string): Date {
+  return new Date(`${value}T00:00:00`);
+}
+
 function TrainerFlow({
+  isPhoneView,
   selectedPlayerId,
   onPlayerChange,
-}: Pick<DashboardPageProps, "selectedPlayerId" | "onPlayerChange">) {
-  const [trainerTab, setTrainerTab] = useState<TrainerTab>("Players");
+}: Pick<DashboardPageProps, "isPhoneView" | "selectedPlayerId" | "onPlayerChange">) {
   const [trainerPlayerTab, setTrainerPlayerTab] = useState<TrainerPlayersTab>("Abilities");
   const [playersView, setPlayersView] = useState<TrainerPlayersView>("list");
   const [newAssessmentReturnView, setNewAssessmentReturnView] = useState<NewAssessmentReturnView>("detail");
+  const [trainerSavedAssessments, setTrainerSavedAssessments] = useState<TrainerSavedAssessment[]>([]);
   const [playerQuery, setPlayerQuery] = useState("");
   const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
   const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
@@ -97,57 +100,72 @@ function TrainerFlow({
     player.profile.playerName.toLowerCase().includes(playerQuery.trim().toLowerCase()),
   );
   const shouldShowFoundationLegend = dashboardCollection.players.some((player) => getOverallScore(player) < 30);
-  const membersCount = dashboardCollection.players.length;
-  const avgSgi =
+  const playersCount = dashboardCollection.players.length;
+  const avgScore =
     dashboardCollection.players.length === 0
       ? 0
       : dashboardCollection.players.reduce((sum, player) => sum + getOverallScore(player), 0) /
         dashboardCollection.players.length;
+  const allAssessments = dashboardCollection.players.flatMap((player) => player.assessmentHistory);
+  const latestAssessmentDate = allAssessments.reduce<Date | null>((latest, item) => {
+    const parsed = parseIsoDate(item.date);
+    if (!latest || parsed > latest) return parsed;
+    return latest;
+  }, null);
+  const latestYearMonth = latestAssessmentDate ? latestAssessmentDate.toISOString().slice(0, 7) : "";
+  const assessmentsThisMonth = latestYearMonth
+    ? allAssessments.filter((item) => item.date.startsWith(latestYearMonth)).length
+    : 0;
+  const playersImproved = dashboardCollection.players.filter((player) => {
+    const points = player.progressTrend;
+    if (points.length < 2) return false;
+    const latest = points[points.length - 1]!.rps;
+    const previous = points[points.length - 2]!.rps;
+    return latest > previous;
+  }).length;
+  const homeStats = [
+    { label: "Players", value: `${playersCount}`, accent: "text-[#3ECF8E]" },
+    { label: "Avg Score", value: `${Math.round(avgScore)}`, accent: "text-[#E0E8F0]" },
+    { label: "Assessments This Month", value: `${assessmentsThisMonth}`, accent: "text-[#E0E8F0]" },
+    { label: "Players Improved", value: `${playersImproved}`, accent: "text-[#3ECF8E]" },
+  ] as const;
 
   const openPlayerDetail = (playerId: string) => {
     onPlayerChange(playerId);
     setPlayersView("detail");
   };
-  const handleTrainerTabChange = (tab: TrainerTab) => {
-    setTrainerTab(tab);
-    if (tab === "Players") setPlayersView("list");
-  };
+
+  const trainerRecordedForPlayer = (playerId: string) =>
+    trainerSavedAssessments
+      .filter((a) => a.playerId === playerId)
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
   return (
-    <section className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-      <Tabs tabs={trainerTabs} activeTab={trainerTab} onChange={handleTrainerTabChange} />
-
-      {trainerTab === "Dashboard" ? (
-        <AcademyOverviewPage />
-      ) : null}
-
-      {trainerTab === "Players" ? (
-        <>
+    <section className={cn("mx-auto flex w-full flex-col gap-5", isPhoneView ? "max-w-[460px]" : "max-w-6xl")}>
+      <>
           {playersView === "list" ? (
-            <section className="mx-auto flex w-full max-w-[800px] flex-col gap-4 pt-6">
-              <h2 className="text-[36px] font-bold leading-none tracking-tight text-[#E0E8F0]">Players</h2>
+            <section className={cn("mx-auto flex w-full flex-col gap-4 pt-2", isPhoneView ? "max-w-[460px]" : "max-w-[900px]")}>
+              <h2 className="text-[32px] font-bold leading-none tracking-tight text-[#E0E8F0]">Players</h2>
 
               <button
                 type="button"
-                className="flex h-16 w-full items-center justify-center gap-3 rounded-3xl bg-[#3ECF8E] text-[24px] font-semibold leading-none text-[#0F1923]"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#3ECF8E] px-4 text-lg font-semibold leading-none text-[#0F1923]"
                 onClick={() => {
                   setNewAssessmentReturnView("list");
                   setPlayersView("newAssessment");
                 }}
               >
-                <ClipboardPlus size={28} strokeWidth={2.25} />
+                <ClipboardPlus size={22} strokeWidth={2.25} />
                 Start new assessment
               </button>
 
-              <div className="grid grid-cols-2 gap-4">
-                <SurfaceCard className="rounded-3xl bg-[#102136] px-5 py-4">
-                  <p className="text-[48px] font-bold leading-none text-[#3ECF8E]">{membersCount}</p>
-                  <p className="mt-2 text-[16px] text-[#9AB0C0]">Members</p>
-                </SurfaceCard>
-                <SurfaceCard className="rounded-3xl bg-[#102136] px-5 py-4">
-                  <p className="text-[48px] font-bold leading-none text-[#E0E8F0]">{Math.round(avgSgi)}</p>
-                  <p className="mt-2 text-[16px] text-[#9AB0C0]">Avg SGI</p>
-                </SurfaceCard>
+              <div className="grid grid-cols-2 gap-3">
+                {homeStats.map((stat) => (
+                  <SurfaceCard key={stat.label} className="rounded-2xl bg-[#102136] px-4 py-3">
+                    <p className={cn("text-[28px] font-bold leading-none", stat.accent)}>{stat.value}</p>
+                    <p className="mt-1 text-[13px] text-[#9AB0C0]">{stat.label}</p>
+                  </SurfaceCard>
+                ))}
               </div>
 
               <div className="relative">
@@ -156,11 +174,11 @@ function TrainerFlow({
                   value={playerQuery}
                   onChange={(event) => setPlayerQuery(event.target.value)}
                   placeholder="Search players..."
-                  className="h-14 w-full rounded-2xl border border-[#1E2D40] bg-[#131F2E] pl-12 pr-4 text-[18px] font-medium leading-none text-[#E0E8F0] placeholder:text-[#6A8090] outline-none"
+                  className="h-11 w-full rounded-2xl border border-[#1E2D40] bg-[#131F2E] pl-12 pr-4 text-base font-medium leading-none text-[#E0E8F0] placeholder:text-[#6A8090] outline-none"
                 />
               </div>
 
-              <div className="mb-1 flex flex-wrap items-center gap-5 text-[15px] font-medium text-[#9AB0C0]">
+              <div className="mb-1 flex flex-wrap items-center gap-3 text-xs font-medium text-[#9AB0C0]">
                 {shouldShowFoundationLegend ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#FB7185]" />
@@ -185,7 +203,7 @@ function TrainerFlow({
                 </span>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 {filteredPlayers.map((player) => {
                   const score = getOverallScore(player);
                   const tier = getOverallTier(player);
@@ -195,30 +213,30 @@ function TrainerFlow({
                       key={player.id}
                       type="button"
                       onClick={() => openPlayerDetail(player.id)}
-                      className="min-h-[110px] rounded-3xl border border-[#1E2D40] bg-[#102136] px-5 py-[18px] text-left transition hover:border-[#2B4360]"
+                      className="min-h-[96px] rounded-2xl border border-[#1E2D40] bg-[#102136] px-4 py-3.5 text-left transition hover:border-[#2B4360]"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
                           <span
-                            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-[3px] text-[19px] font-bold"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 text-[15px] font-bold"
                             style={{ borderColor: scoreBarColor(tier), color: scoreBarColor(tier) }}
                           >
                             {initials(player.profile.playerName)}
                           </span>
                           <div className="min-w-0">
-                            <p className="truncate text-[24px] font-semibold leading-none text-[#E0E8F0]">{player.profile.playerName}</p>
-                            <p className="mt-1.5 text-[16px] leading-none text-[#9AB0C0]">{assessmentDate}</p>
+                            <p className="truncate text-[22px] font-semibold leading-none text-[#E0E8F0]">{player.profile.playerName}</p>
+                            <p className="mt-1.5 text-[13px] leading-none text-[#9AB0C0]">{assessmentDate}</p>
                           </div>
                         </div>
                         <div
-                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-[28px] font-bold leading-none"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl font-bold leading-none"
                           style={{ borderColor: scoreBarColor(tier), color: scoreBarColor(tier) }}
                         >
                           {Math.round(score)}
                         </div>
                       </div>
 
-                      <div className="ml-[72px] mt-3 h-1.5 overflow-hidden rounded-full bg-[#1E2D40]">
+                      <div className="ml-[56px] mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#1E2D40]">
                         <div
                           className="h-full rounded-full"
                           style={{
@@ -240,11 +258,11 @@ function TrainerFlow({
 
           {playersView === "detail" ? (
             <>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   onClick={() => setPlayersView("list")}
-                  className="inline-flex items-center gap-2 rounded-full border border-[#1E2D40] bg-[#131F2E] px-3 py-2 text-sm font-semibold text-[#9AB0C0] hover:text-[#E0E8F0]"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#1E2D40] bg-[#131F2E] px-3 py-2 text-sm font-semibold text-[#9AB0C0] hover:text-[#E0E8F0] sm:w-auto sm:justify-start"
                 >
                   <ArrowLeft size={16} />
                   Back to Players
@@ -255,7 +273,7 @@ function TrainerFlow({
                     setNewAssessmentReturnView("detail");
                     setPlayersView("newAssessment");
                   }}
-                  className="rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923]"
+                  className="w-full rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923] sm:w-auto"
                 >
                   Score New Assessment
                 </button>
@@ -266,9 +284,50 @@ function TrainerFlow({
                 displayProfile={currentPlayer.profile}
                 selectedPlayerId={currentPlayer.id}
                 onPlayerChange={onPlayerChange}
+                forceMobileLayout={isPhoneView}
               />
 
-              <KpiSection metrics={currentPlayer.summaryMetrics} />
+              <KpiSection metrics={currentPlayer.summaryMetrics} forceMobileLayout={isPhoneView} />
+
+              {trainerRecordedForPlayer(currentPlayer.id).length > 0 ? (
+                <SurfaceCard className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                    Trainer-recorded assessments
+                  </p>
+                  <p className="text-xs text-[#9AB0C0]">
+                    Entries saved from New Assessment below. Raw drill scores — not rerolled into overall SGI in this prototype.
+                  </p>
+                  <ul className="flex flex-col gap-2.5">
+                    {trainerRecordedForPlayer(currentPlayer.id).map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="rounded-xl border border-[#1E2D40] bg-[#102136] px-3 py-2.5 text-sm"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="font-semibold text-[#E0E8F0]">{entry.assessmentName}</p>
+                          <span className="text-xs text-[#9AB0C0]">
+                            {new Date(entry.timestamp).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-[#9AB0C0]">
+                          {entry.category} · {entry.equipment}
+                        </p>
+                        <p className="mt-1 text-[#E0E8F0]">
+                          Score: {entry.scoreUnit === "/8" ? `${entry.rawScore}/8` : entry.scoreUnit === "sec" ? `${entry.rawScore} sec` : entry.rawScore}
+                        </p>
+                        {entry.notes ? (
+                          <p className="mt-1 border-t border-[#1E2D40] pt-2 text-xs text-[#9AB0C0]">{entry.notes}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </SurfaceCard>
+              ) : null}
 
               <div className="flex flex-col gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
@@ -294,11 +353,12 @@ function TrainerFlow({
               </div>
 
               {trainerPlayerTab === "Progress over time" ? (
-                <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+                <section className={cn("grid gap-4", isPhoneView ? "grid-cols-1" : "xl:grid-cols-[1.4fr_1fr]")}>
                   <ProgressTrendChart
                     title="Score over time"
                     description="Monthly SGI Score trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
                     points={visibleTrend}
+                    forceMobileLayout={isPhoneView}
                   />
                   <DistributionChart
                     title="Cohort distribution snapshot"
@@ -307,61 +367,48 @@ function TrainerFlow({
                       ...currentPlayer.cohortDistribution,
                       cohortLabel: currentPlayer.profile.cohortName,
                     }}
+                    forceMobileLayout={isPhoneView}
                   />
                 </section>
               ) : null}
 
               {trainerPlayerTab === "Abilities" ? (
-                <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+                <section className={cn("grid gap-4", isPhoneView ? "grid-cols-1" : "xl:grid-cols-[1.45fr_0.95fr]")}>
                   <AssessmentBreakdown
                     abilities={currentPlayer.abilityBreakdown}
                     playerName={currentPlayer.profile.playerName}
+                    forceMobileLayout={isPhoneView}
                   />
-                  <ArchetypeInsightCard archetype={currentPlayer.archetype} />
+                  <ArchetypeInsightCard archetype={currentPlayer.archetype} forceMobileLayout={isPhoneView} />
                 </section>
               ) : null}
             </>
           ) : null}
 
           {playersView === "newAssessment" ? (
-            <SurfaceCard>
-              <div className="flex flex-col gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">New Assessment</p>
-                  <h2 className="text-xl font-semibold text-[#E0E8F0]">Score New Assessment</h2>
-                </div>
-                <p className="text-sm text-[#9AB0C0]">
-                  Assessment input flow coming next phase. This placeholder remains tied to the selected player.
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPlayersView(newAssessmentReturnView)}
-                    className="rounded-full border border-[#1E2D40] bg-[#131F2E] px-4 py-2 text-sm font-semibold text-[#9AB0C0] hover:text-[#E0E8F0]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPlayersView("detail")}
-                    className="rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923]"
-                  >
-                    Save Assessment
-                  </button>
-                </div>
-              </div>
-            </SurfaceCard>
+            <TrainerNewAssessmentForm
+              players={dashboardCollection.players}
+              presetPlayerId={
+                newAssessmentReturnView === "detail" ? selectedPlayerId : undefined
+              }
+              onCancel={() => setPlayersView(newAssessmentReturnView)}
+              onSave={(saved) => {
+                setTrainerSavedAssessments((prev) => [saved, ...prev]);
+                onPlayerChange(saved.playerId);
+                setPlayersView("detail");
+              }}
+            />
           ) : null}
-        </>
-      ) : null}
+      </>
     </section>
   );
 }
 
 function ParentPlayerFlow({
+  isPhoneView,
   selectedPlayerId,
   onPlayerChange,
-}: Pick<DashboardPageProps, "selectedPlayerId" | "onPlayerChange">) {
+}: Pick<DashboardPageProps, "isPhoneView" | "selectedPlayerId" | "onPlayerChange">) {
   const [parentTab, setParentTab] = useState<ParentTab>("Overview");
   const [selectedSkill, setSelectedSkill] = useState<(typeof ABILITY_ORDER)[number]>("Passing");
   const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
@@ -375,7 +422,7 @@ function ParentPlayerFlow({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="mx-auto w-full max-w-screen-sm py-2">
+      <section className={cn("mx-auto w-full py-1", isPhoneView ? "max-w-[460px]" : "max-w-[900px]")}>
         <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
             Switch Player (Demo)
@@ -389,7 +436,7 @@ function ParentPlayerFlow({
         </SurfaceCard>
       </section>
 
-      <div className="mx-auto w-full max-w-screen-sm">
+      <div className={cn("mx-auto w-full", isPhoneView ? "max-w-[460px]" : "max-w-[900px]")}>
         <div className="inline-flex w-full rounded-full border border-[#1E2D40] bg-[#131F2E] p-1">
           {parentTabs.map((tab) => {
             const isActive = tab === parentTab;
@@ -399,7 +446,7 @@ function ParentPlayerFlow({
                 type="button"
                 onClick={() => setParentTab(tab)}
                 className={cn(
-                  "flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                  "flex-1 rounded-full px-3.5 py-2 text-sm font-semibold transition",
                   isActive ? "bg-[#3ECF8E] text-[#0F1923]" : "text-[#9AB0C0] hover:text-[#E0E8F0]",
                 )}
               >
@@ -411,7 +458,7 @@ function ParentPlayerFlow({
       </div>
 
       {parentTab === "Overview" ? (
-        <section className="mx-auto w-full max-w-screen-sm py-2">
+        <section className={cn("mx-auto w-full py-1", isPhoneView ? "max-w-[460px]" : "max-w-[900px]")}>
           <div className="flex w-full flex-col gap-4">
             <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
               <SectionHeader
@@ -419,8 +466,8 @@ function ParentPlayerFlow({
                 title={currentPlayer.profile.playerName}
                 description={`${currentPlayer.profile.ageGroup} · ${currentPlayer.profile.gender}`}
               />
-              <div className="mt-6 flex flex-col items-center gap-3">
-                <ScoreRing score={Number(overallSgi)} size={178} label="Score" />
+              <div className="mt-4 flex flex-col items-center gap-2.5">
+                <ScoreRing score={Number(overallSgi)} size={148} label="Score" />
                 <span
                   className={cn(
                     "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
@@ -453,7 +500,7 @@ function ParentPlayerFlow({
       ) : null}
 
       {parentTab === "Progress" ? (
-        <section className="mx-auto w-full max-w-screen-sm py-2">
+        <section className={cn("mx-auto w-full py-1", isPhoneView ? "max-w-[460px]" : "max-w-[900px]")}>
           <div className="flex w-full flex-col gap-4">
             <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
               <SectionHeader
@@ -461,27 +508,27 @@ function ParentPlayerFlow({
                 title={`${currentPlayer.profile.playerName}`}
                 description="Overall Score trend across recorded months."
               />
-              <div className="mt-4 h-[280px]">
+              <div className="mt-4 h-[230px] sm:h-[250px]">
                 {visibleTrend.length === 0 ? (
                   <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
                     No monthly progress data available yet.
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={visibleTrend} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                    <LineChart data={visibleTrend} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
                       <XAxis
                         dataKey="label"
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "#9AB0C0", fontSize: 12 }}
+                        tick={{ fill: "#9AB0C0", fontSize: 11 }}
                       />
                       <YAxis
                         domain={[30, 99]}
                         tickCount={6}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "#9AB0C0", fontSize: 12 }}
+                        tick={{ fill: "#9AB0C0", fontSize: 11 }}
                       />
                       <Tooltip formatter={(value: number) => [`${value}`, "Score"]} labelFormatter={(label) => `${label}`} />
                       <Line
@@ -517,27 +564,27 @@ function ParentPlayerFlow({
                     ))}
                   </select>
                 </div>
-                <div className="h-[260px]">
+                <div className="h-[220px] sm:h-[240px]">
                   {selectedSkillProgress.length === 0 ? (
                     <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
                       No monthly progress data available for {selectedSkill} yet.
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={selectedSkillProgress} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                      <LineChart data={selectedSkillProgress} margin={{ top: 8, right: 12, left: -18, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
                         <XAxis
                           dataKey="label"
                           tickLine={false}
                           axisLine={false}
-                          tick={{ fill: "#9AB0C0", fontSize: 12 }}
+                          tick={{ fill: "#9AB0C0", fontSize: 11 }}
                         />
                         <YAxis
                           domain={[30, 99]}
                           tickCount={6}
                           tickLine={false}
                           axisLine={false}
-                          tick={{ fill: "#9AB0C0", fontSize: 12 }}
+                          tick={{ fill: "#9AB0C0", fontSize: 11 }}
                         />
                         <Tooltip formatter={(value: number) => [`${value}`, "Skill Score"]} labelFormatter={(label) => `${label}`} />
                         <Line
@@ -564,7 +611,30 @@ function ParentPlayerFlow({
                 {currentPlayer.assessmentHistory.length === 0 ? (
                   <p className="text-sm text-[#9AB0C0]">No assessment history available.</p>
                 ) : (
-                  <div className="max-h-[320px] overflow-auto rounded-2xl border border-[#1E2D40]">
+                  <>
+                    <div className="flex flex-col gap-2.5 md:hidden">
+                      {currentPlayer.assessmentHistory.map((entry) => (
+                        <div
+                          key={`${entry.date}-${entry.assessmentName}`}
+                          className="rounded-xl border border-[#1E2D40] bg-[#0F2236] px-3.5 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-[#E0E8F0]">{entry.assessmentName}</p>
+                              <p className="mt-0.5 text-xs text-[#9AB0C0]">{entry.date}</p>
+                            </div>
+                            <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", bandTextMap[entry.tier])}>
+                              {entry.tier}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-xs">
+                            <span className="text-[#9AB0C0]">{entry.ability}</span>
+                            <span className="font-semibold text-[#E0E8F0]">{entry.score.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden max-h-[320px] overflow-auto rounded-2xl border border-[#1E2D40] md:block">
                     <table className="w-full border-collapse text-sm">
                       <thead className="sticky top-0 bg-[#0F2236] text-left text-xs uppercase tracking-[0.14em] text-[#9AB0C0]">
                         <tr>
@@ -591,7 +661,8 @@ function ParentPlayerFlow({
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             </SurfaceCard>
@@ -602,13 +673,13 @@ function ParentPlayerFlow({
   );
 }
 
-export function DashboardPage({ role, selectedPlayerId, onPlayerChange }: DashboardPageProps) {
+export function DashboardPage({ role, isPhoneView, selectedPlayerId, onPlayerChange }: DashboardPageProps) {
   return (
     <>
       {role === "Trainer View" ? (
-        <TrainerFlow selectedPlayerId={selectedPlayerId} onPlayerChange={onPlayerChange} />
+        <TrainerFlow isPhoneView={isPhoneView} selectedPlayerId={selectedPlayerId} onPlayerChange={onPlayerChange} />
       ) : (
-        <ParentPlayerFlow selectedPlayerId={selectedPlayerId} onPlayerChange={onPlayerChange} />
+        <ParentPlayerFlow isPhoneView={isPhoneView} selectedPlayerId={selectedPlayerId} onPlayerChange={onPlayerChange} />
       )}
     </>
   );

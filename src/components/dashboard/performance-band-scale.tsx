@@ -22,33 +22,33 @@ export function PerformanceBandScale({
 
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-[#9AB0C0]">Score tier</p>
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        <p className="text-xs font-medium text-[#9AB0C0] sm:text-sm">Score tier</p>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
+            "w-fit shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:px-2.5 sm:py-1 sm:text-xs",
             bandTextMap[performanceBand],
           )}
         >
           {performanceBand}
         </span>
       </div>
-      <div className="relative w-full min-w-[min(100%,22rem)]">
+      <div className="relative w-full min-w-0">
         <div className="flex overflow-hidden rounded-full border border-[#1E2D40]">
           {tierBands.map(({ band, start, end }) => (
             <div
               key={band}
-              className={cn("h-6 sm:h-7", bandColorMap[band])}
+              className={cn("h-4 sm:h-6", bandColorMap[band])}
               style={{ width: `${end - start}%` }}
             />
           ))}
         </div>
         <div
-          className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[#0F1923] bg-white shadow-md sm:h-6 sm:w-6"
+          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0F1923] bg-white shadow-md sm:h-6 sm:w-6 sm:border-[3px]"
           style={{ left: markerPosition }}
         />
       </div>
-      <div className="flex w-full">
+      <div className="hidden w-full sm:flex">
         {tierBands.map(({ band, start, end }) => (
           <span
             key={band}
@@ -59,6 +59,7 @@ export function PerformanceBandScale({
           </span>
         ))}
       </div>
+      <p className="text-[10px] font-medium text-[#9AB0C0] sm:hidden">Foundation to Elite</p>
     </div>
   );
 }

@@ -6,14 +6,17 @@ import type { ArchetypePoint, ArchetypeSummary } from "../../types/dashboard";
 
 type ArchetypeInsightCardProps = {
   archetype: ArchetypeSummary;
+  forceMobileLayout?: boolean;
 };
 
 function ClusterMap({
   points,
   playerPoint,
+  forceMobileLayout = false,
 }: {
   points: ArchetypePoint[];
   playerPoint: ArchetypePoint;
+  forceMobileLayout?: boolean;
 }) {
   const w = ARCHETYPE_CHART_WIDTH;
   const h = ARCHETYPE_CHART_HEIGHT;
@@ -28,10 +31,14 @@ function ClusterMap({
   const axisLabelBottomBaseline = pad + plotH + axisLabelGap + 14;
 
   return (
-    <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-3 sm:p-4">
+    <div className="overflow-hidden rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-3 sm:p-4">
       <svg
         viewBox={`0 0 ${w} ${h}`}
-        className="h-auto w-full min-h-[340px] max-h-[560px] sm:min-h-[380px]"
+        className={
+          forceMobileLayout
+            ? "h-auto w-full min-h-[250px] max-h-[420px]"
+            : "h-auto w-full min-h-[250px] max-h-[560px] sm:min-h-[380px]"
+        }
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
@@ -46,7 +53,7 @@ function ClusterMap({
         {points.map((point) => (
           <g key={point.label}>
             <circle cx={point.x} cy={point.y} r="28" fill={point.color} fillOpacity="0.28" />
-            <text x={point.x} y={point.y + 48} textAnchor="middle" className="fill-[#9AB0C0] text-[16px] font-semibold">
+            <text x={point.x} y={point.y + 48} textAnchor="middle" className="fill-[#9AB0C0] text-[12px] font-semibold sm:text-[16px]">
               {point.label}
             </text>
           </g>
@@ -62,29 +69,29 @@ function ClusterMap({
             fill="none"
             strokeWidth="1"
           />
-          <text x={playerPoint.x} y={playerPoint.y - 20} textAnchor="middle" className="fill-[#E0E8F0] text-[16px] font-bold">
+          <text x={playerPoint.x} y={playerPoint.y - 20} textAnchor="middle" className="fill-[#E0E8F0] text-[12px] font-bold sm:text-[16px]">
             {playerPoint.label || "Player"}
           </text>
         </g>
-        <text x={pad + 4} y={axisLabelTopBaseline} className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight">
+        <text x={pad + 4} y={axisLabelTopBaseline} className="fill-[#9AB0C0] text-[12px] font-bold tracking-tight sm:text-[20px]">
           Explosive direct play
         </text>
         <text
           x={w - pad - 4}
           y={axisLabelTopBaseline}
           textAnchor="end"
-          className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight"
+          className="fill-[#9AB0C0] text-[12px] font-bold tracking-tight sm:text-[20px]"
         >
           Control and possession
         </text>
-        <text x={pad + 4} y={axisLabelBottomBaseline} className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight">
+        <text x={pad + 4} y={axisLabelBottomBaseline} className="fill-[#9AB0C0] text-[12px] font-bold tracking-tight sm:text-[20px]">
           Developmental ceiling
         </text>
         <text
           x={w - pad - 4}
           y={axisLabelBottomBaseline}
           textAnchor="end"
-          className="fill-[#9AB0C0] text-[20px] font-bold tracking-tight"
+          className="fill-[#9AB0C0] text-[12px] font-bold tracking-tight sm:text-[20px]"
         >
           All-around polish
         </text>
@@ -93,7 +100,7 @@ function ClusterMap({
   );
 }
 
-export function ArchetypeInsightCard({ archetype }: ArchetypeInsightCardProps) {
+export function ArchetypeInsightCard({ archetype, forceMobileLayout = false }: ArchetypeInsightCardProps) {
   return (
     <SurfaceCard className="h-full">
       <div className="flex h-full flex-col gap-6">
@@ -115,9 +122,13 @@ export function ArchetypeInsightCard({ archetype }: ArchetypeInsightCardProps) {
           </div>
         </div>
 
-        <ClusterMap points={archetype.clusterPoints} playerPoint={archetype.playerPoint} />
+        <ClusterMap
+          points={archetype.clusterPoints}
+          playerPoint={archetype.playerPoint}
+          forceMobileLayout={forceMobileLayout}
+        />
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={forceMobileLayout ? "grid grid-cols-1 gap-3" : "grid gap-3 sm:grid-cols-2"}>
           {archetype.traits.map((trait) => (
             <div key={trait.label} className="rounded-[20px] border border-[#1E2D40] bg-[#0F2236] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6A8090]">
