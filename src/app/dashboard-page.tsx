@@ -84,9 +84,24 @@ function parseIsoDate(value: string): Date {
   return new Date(`${value}T00:00:00`);
 }
 
+/** Latest session date for display when history omits APS-unmapped drills. */
+function latestAssessmentDateLabel(player: PlayerDashboardView): string {
+  const fromHistory = player.assessmentHistory[0]?.date;
+  if (fromHistory) return fromHistory;
+  let best = "";
+  for (const row of player.abilityBreakdown) {
+    for (const t of row.tests) {
+      const m = /Latest:\s*(\d{4}-\d{2}-\d{2})/.exec(t.latestSessionLabel);
+      const iso = m?.[1];
+      if (iso && iso > best) best = iso;
+    }
+  }
+  return best || "No assessments yet";
+}
+
 /** True when the extract has at least one drill row mapped to an academy ability (same as trainer breakdown). */
 function hasMappedAssessmentScores(player: PlayerDashboardView): boolean {
-  return player.assessmentHistory.length > 0;
+  return player.abilityBreakdown.some((row) => row.tests.length > 0);
 }
 
 function EmptyAbilitySkillPrompt({ ability }: { ability: string }) {
@@ -228,7 +243,7 @@ function TrainerFlow({
                 {filteredPlayers.map((player) => {
                   const score = getOverallScore(player);
                   const tier = getOverallTier(player);
-                  const assessmentDate = player.assessmentHistory[0]?.date ?? "No assessments yet";
+                  const assessmentDate = latestAssessmentDateLabel(player);
                   return (
                     <button
                       key={player.id}
@@ -438,7 +453,7 @@ function ParentPlayerFlow({
     currentPlayer.summaryMetrics.find((metric) => metric.label === "Overall SGI")?.value ?? "—";
   const overallTier =
     currentPlayer.summaryMetrics.find((metric) => metric.label === "SGI tier")?.value ?? "—";
-  const lastUpdated = currentPlayer.assessmentHistory[0]?.date ?? "No assessments yet";
+  const lastUpdated = latestAssessmentDateLabel(currentPlayer);
   const hasScores = hasMappedAssessmentScores(currentPlayer);
   const selectedSkillProgress = currentPlayer.skillProgress[selectedSkill] ?? [];
 

@@ -1,5 +1,5 @@
 /**
- * TypeScript ports of Analysis/final_aps.py (APS + bands) and Analysis/sigmoid_cohort.py
+ * TypeScript ports of Analysis/final_aps_new.py (APS + bands) and Analysis/final_rps.py
  * (cohort sigmoid RPS 30–99). Used by the dashboard pipeline only — no Python at runtime.
  */
 import type { AbilityName, PerformanceBand } from "../types/dashboard";
@@ -14,7 +14,6 @@ const RPS_MIN = 30;
 const RPS_MAX = 99;
 const RPS_RANGE = RPS_MAX - RPS_MIN;
 const SPAN_PERCENTILE = 0.75;
-const SMOOTHING_LAMBDA = 0.7;
 
 /** Cohort key for scoring (matches Python age_map on letters A–F). */
 export function pythonAgeGroupFromLetter(letter: string): 1 | 2 | 3 {
@@ -293,7 +292,7 @@ function buildApsOutputs(internal: InternalRow[]) {
   }
 
   type BenchKey = string;
-  /** Matches `pd.concat` of age_gender + age_group benchmark sources in final_aps.py. */
+  /** Matches `pd.concat` of age_gender + age_group benchmark sources in final_aps_new.py. */
   const benchmarkRows: { categoryAssessment: string; benchmarkCohort: string; score: number }[] = [];
   for (const r of benchmarkBase) {
     benchmarkRows.push({
@@ -418,109 +417,115 @@ function buildApsOutputs(internal: InternalRow[]) {
   return { rowAps, weightedByPlayerSkill, categoryMeans, finalByPlayer };
 }
 
+/**
+ * Cohort RPS aligned with Analysis/final_rps.py `compare_global_vs_cohort_sigmoid_rps`:
+ * log + direction on modeling scores match `score_model` / `score_oriented`; small cohorts use
+ * age-group-only mids/spans (`same_age_group_gender_combined`), not smoothing toward global;
+ * NaN / mid===span benchmarks fall back to global.
+ */
 function buildSigmoidOutputs(internal: InternalRow[]) {
-  const SIGMOID_SKILL_TYPE_MAP: Record<string, "Log" | "Normal"> = {
-    "Circuit Training Knockout": "Log",
-    "Circuit Training Knockout-Obstacle": "Log",
-    "Freelap-10yd Dash": "Log",
-    "Freelap-10yd Dash Ball": "Log",
-    "Freelap-20yd Dash": "Log",
-    "Freelap-20yd Dash Ball": "Log",
-    "RoxPro 5-10-5 shuttle": "Log",
-    "RoxPro Sprint-10 yrd": "Log",
-  };
-  const SIGMOID_GOOD_DIRECTION_MAP: Record<string, "Lo" | "Hi"> = {
-    "Circuit Training Knockout": "Lo",
-    "Circuit Training Knockout-Obstacle": "Lo",
-    "Freelap-10yd Dash": "Lo",
-    "Freelap-10yd Dash Ball": "Lo",
-    "Freelap-20yd Dash": "Lo",
-    "Freelap-20yd Dash Ball": "Lo",
-    "Broad Jump-5-10-5 Shuttles": "Lo",
-    "RoxPro 5-10-5 shuttle": "Lo",
-    "RoxPro Sprint-10 yrd": "Lo",
-  };
-  const skillCol = (r: InternalRow) => r.categoryAssessment;
+  type SigmoidRow = InternalRow & { scoreOriented: number };
 
-  const safeLog = (x: number): number => {
-    if (!Number.isFinite(x) || x <= 0) return NaN;
-    return Math.log(x);
-  };
+  /** `score_logged` matches Python score_model inputs (early log via LOG_TRANSFORM_KEYS); orient like `score_oriented`. */
+  const data: SigmoidRow[] = [];
+  for (const r of internal) {
+    const scoreModel = r.scoreLogged;
+    if (!Number.isFinite(scoreModel)) continue;
+    const scoreOriented = r.higherIsBetter ? scoreModel : -scoreModel;
+    if (!Number.isFinite(scoreOriented)) continue;
+    data.push({ ...r, scoreOriented });
+  }
 
-  type SigmoidRow = InternalRow & { scoreModel: number; scoreOriented: number };
-
-  const data: SigmoidRow[] = internal
-    .map((r) => {
-      const skillType = SIGMOID_SKILL_TYPE_MAP[r.categoryAssessment] ?? "Normal";
-      const goodDirection = SIGMOID_GOOD_DIRECTION_MAP[r.categoryAssessment] ?? "Hi";
-      const scoreModel = skillType === "Log" ? safeLog(r.scoreForModel) : r.scoreForModel;
-      const scoreOriented = goodDirection === "Lo" ? -scoreModel : scoreModel;
-      return {
-        ...r,
-        scoreModel,
-        scoreOriented,
-      };
-    })
-    .filter((r) => Number.isFinite(r.scoreModel) && Number.isFinite(r.scoreOriented));
-
-  type GlobalRow = {
-    skill: string;
-    globalMid: number;
-    globalSpan: number;
-  };
-  const globalParams = new Map<string, GlobalRow>();
+  const globalParams = new Map<string, { globalMid: number; globalSpan: number }>();
   const bySkill = new Map<string, SigmoidRow[]>();
   for (const r of data) {
-    const sk = skillCol(r);
-    const arr = bySkill.get(sk) ?? [];
+    const arr = bySkill.get(r.categoryAssessment) ?? [];
     arr.push(r);
-    bySkill.set(sk, arr);
+    bySkill.set(r.categoryAssessment, arr);
   }
   for (const [skill, arr] of bySkill) {
     const oriented = sortedValues(arr.map((x) => x.scoreOriented));
     if (!oriented.length) continue;
-    const globalMid = quantile(oriented, 0.5);
-    const globalSpan = quantile(oriented, SPAN_PERCENTILE);
-    globalParams.set(skill, { skill, globalMid, globalSpan });
+    globalParams.set(skill, {
+      globalMid: quantile(oriented, 0.5),
+      globalSpan: quantile(oriented, SPAN_PERCENTILE),
+    });
   }
 
-  type CohortRow = {
-    skill: string;
-    cohort: string;
-    cohortN: number;
-    cohortMidSmoothed: number;
-    cohortSpanSmoothed: number;
-  };
-  const cohortParams = new Map<string, CohortRow>();
+  const cohortStats = new Map<string, { cohortN: number; mid: number; span: number }>();
   const bySkillCohort = new Map<string, SigmoidRow[]>();
   for (const r of data) {
-    const k = `${skillCol(r)}|||${r.cohort}`;
+    const k = `${r.categoryAssessment}|||${r.cohort}`;
     const arr = bySkillCohort.get(k) ?? [];
     arr.push(r);
     bySkillCohort.set(k, arr);
   }
   for (const [k, arr] of bySkillCohort) {
-    const [skill, cohort] = k.split("|||") as [string, string];
-    const g = globalParams.get(skill);
-    if (!g) continue;
     const oriented = sortedValues(arr.map((x) => x.scoreOriented));
-    const cohortN = oriented.length;
-    const cohortMid = quantile(oriented, 0.5);
-    const cohortSpan = quantile(oriented, SPAN_PERCENTILE);
-    const small = cohortN < MIN_COHORT_N;
-    const lam = small ? SMOOTHING_LAMBDA : 1;
-    const cohortMidSmoothed = lam * cohortMid + (1 - lam) * g.globalMid;
-    const cohortSpanSmoothed = lam * cohortSpan + (1 - lam) * g.globalSpan;
-    cohortParams.set(k, {
-      skill,
-      cohort,
-      cohortN,
-      cohortMidSmoothed,
-      cohortSpanSmoothed,
+    cohortStats.set(k, {
+      cohortN: oriented.length,
+      mid: quantile(oriented, 0.5),
+      span: quantile(oriented, SPAN_PERCENTILE),
     });
   }
 
+  const ageGroupStats = new Map<string, { n: number; mid: number; span: number }>();
+  const bySkillAge = new Map<string, SigmoidRow[]>();
+  for (const r of data) {
+    const k = `${r.categoryAssessment}|||${r.ageGroup}`;
+    const arr = bySkillAge.get(k) ?? [];
+    arr.push(r);
+    bySkillAge.set(k, arr);
+  }
+  for (const [k, arr] of bySkillAge) {
+    const oriented = sortedValues(arr.map((x) => x.scoreOriented));
+    ageGroupStats.set(k, {
+      n: oriented.length,
+      mid: quantile(oriented, 0.5),
+      span: quantile(oriented, SPAN_PERCENTILE),
+    });
+  }
+
+  function pickRpsMidSpan(r: SigmoidRow): { mid: number; span: number } | null {
+    const skill = r.categoryAssessment;
+    const g = globalParams.get(skill);
+    if (!g) return null;
+
+    const cohortKey = `${skill}|||${r.cohort}`;
+    const cohort = cohortStats.get(cohortKey);
+    const ageKey = `${skill}|||${r.ageGroup}`;
+    const ageGrp = ageGroupStats.get(ageKey);
+
+    let mid: number;
+    let span: number;
+    if (cohort && cohort.cohortN >= MIN_COHORT_N) {
+      mid = cohort.mid;
+      span = cohort.span;
+    } else if (ageGrp) {
+      mid = ageGrp.mid;
+      span = ageGrp.span;
+    } else {
+      mid = NaN;
+      span = NaN;
+    }
+
+    const invalid =
+      !Number.isFinite(mid) || !Number.isFinite(span) || mid === span;
+    if (invalid) {
+      mid = g.globalMid;
+      span = g.globalSpan;
+    }
+    if (!Number.isFinite(mid) || !Number.isFinite(span) || mid === span) return null;
+    return { mid, span };
+  }
+
   const rowRps = new Map<number, number>();
+  for (const r of data) {
+    const bench = pickRpsMidSpan(r);
+    if (!bench) continue;
+    const rpsCohort = calculateRps(r.scoreOriented, bench.mid, bench.span);
+    if (Number.isFinite(rpsCohort)) rowRps.set(r.ix, rpsCohort);
+  }
 
   /** Newest-first per player×assessment (matches Python sort for recency rank). */
   const timeSortedNewestFirst = [...data].sort((a, b) => {
@@ -545,16 +550,6 @@ function buildSigmoidOutputs(internal: InternalRow[]) {
       rankByIx.set(ix, idx + 1);
       countByIx.set(ix, n);
     });
-  }
-
-  for (const r of data) {
-    const g = globalParams.get(r.categoryAssessment);
-    const ck = `${r.categoryAssessment}|||${r.cohort}`;
-    const cp = cohortParams.get(ck);
-    if (!g || !cp) continue;
-    const x = r.scoreOriented;
-    const rpsCohort = calculateRps(x, cp.cohortMidSmoothed, cp.cohortSpanSmoothed);
-    if (Number.isFinite(rpsCohort)) rowRps.set(r.ix, rpsCohort);
   }
 
   const assessmentCohortRps = new Map<string, number>();

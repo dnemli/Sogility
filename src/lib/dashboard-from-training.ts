@@ -187,9 +187,10 @@ function buildArchetypeLayout(
 
   const raw: (number | null)[][] = aggs.map((a) => skillVectorForPlayer(a.rows, rowIndex, scoring));
   const X = imputeSkillMatrix(raw);
-  const kCl = Math.min(4, Math.max(1, n));
+  // Analysis/cluster.py uses k=4; with fewer than four players sklearn would still request four clusters — use k=n here.
+  const kCl = n >= 4 ? 4 : Math.max(1, n);
 
-  const km = kmeans(X, kCl, 42);
+  const km = kmeans(X, kCl, 42, 10);
   const mu = colMeans(X);
   const Xc = centerMatrix(X, mu);
   const { v1, v2, scores } = pcaTwoComponents(Xc);
@@ -236,7 +237,7 @@ function buildArchetypeLayout(
 
     byPlayer.set(pk, {
       primaryArchetype: primary,
-      summary: `K-means (${kCl} clusters) on five skill signals, projected with PCA (same structure as Analysis/cluster.py).`,
+      summary: `K-means (${kCl} clusters, k-means++, n_init=10, seed 42) on five skill signals; 2D PCA projection (same defaults as Analysis/cluster.py).`,
       coachInsight: `Skill vector (cohort SGI / RPS): Drib ${vec[0]!.toFixed(0)}, Pass ${vec[1]!.toFixed(0)}, Vision ${vec[2]!.toFixed(0)}, Agility ${vec[3]!.toFixed(0)}, First Touch ${vec[4]!.toFixed(0)}.`,
       clusterPoints: clusters.map((c) => ({ label: c.label, x: c.x, y: c.y, color: c.color })),
       playerPoint: {
@@ -467,14 +468,16 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
         changeDirection: dir,
         latestSessionLabel: `Latest: ${cur.isoDate}`,
       });
-      assessmentHistory.push({
-        date: isoDayUtc(cur.sessionDate),
-        assessmentName: `${cur.category} ${cur.drill}`,
-        ability,
-        sgiScore: Math.round(currentSgi * 10) / 10,
-        apsScore: drillAps,
-        tier: performanceBand,
-      });
+      if (wa) {
+        assessmentHistory.push({
+          date: isoDayUtc(cur.sessionDate),
+          assessmentName: `${cur.category} ${cur.drill}`,
+          ability,
+          sgiScore: Math.round(currentSgi * 10) / 10,
+          apsScore: drillAps,
+          tier: performanceBand,
+        });
+      }
     }
     assessmentRows.sort((a, b) => b.rpsScore - a.rpsScore);
     assessmentHistory.sort((a, b) => b.date.localeCompare(a.date));

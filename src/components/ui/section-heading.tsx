@@ -1,7 +1,7 @@
 type SectionHeadingProps = {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
 };
 
 export function SectionHeading({ eyebrow, title, description }: SectionHeadingProps) {
@@ -14,7 +14,9 @@ export function SectionHeading({ eyebrow, title, description }: SectionHeadingPr
       ) : null}
       <div>
         <h2 className="text-xl font-semibold tracking-tight text-[#E0E8F0]">{title}</h2>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-[#9AB0C0]">{description}</p>
+        {description ? (
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#9AB0C0]">{description}</p>
+        ) : null}
       </div>
     </div>
   );

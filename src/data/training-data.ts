@@ -1,7 +1,7 @@
 /**
  * Single source of truth: `Data/training_session.csv` (bundled at build time).
- * Dashboard figures derive from parsed rows plus TS ports of Analysis/sigmoid_cohort.py (RPS) and
- * Analysis/final_aps.py (APS bands) — no hand-entered KPIs.
+ * Dashboard figures derive from parsed rows plus TS ports of Analysis/final_rps.py (RPS) and
+ * Analysis/final_aps_new.py (APS bands) — no hand-entered KPIs.
  */
 import trainingCsv from "../../Data/training_session.csv?raw";
 import { buildAcademyAssessmentRecords } from "../lib/academy-records-from-training";

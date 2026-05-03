@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 import { ARCHETYPE_CHART_HEIGHT, ARCHETYPE_CHART_PAD, ARCHETYPE_CHART_WIDTH } from "../../lib/archetype-chart-layout";
 import { SurfaceCard } from "../ui/card";
 import { SectionHeading } from "../ui/section-heading";
@@ -104,23 +103,7 @@ export function ArchetypeInsightCard({ archetype, forceMobileLayout = false }: A
   return (
     <SurfaceCard className="h-full">
       <div className="flex h-full flex-col gap-6">
-        <SectionHeading
-          eyebrow="Archetype & Cluster"
-          title={archetype.primaryArchetype}
-          description={archetype.summary}
-        />
-
-        <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4">
-          <div className="flex items-start gap-3">
-            <span className="rounded-2xl bg-[#1E2D40] p-2 text-[#3ECF8E]">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-[#E0E8F0]">Coach-ready insight</p>
-              <p className="mt-2 text-sm leading-6 text-[#9AB0C0]">{archetype.coachInsight}</p>
-            </div>
-          </div>
-        </div>
+        <SectionHeading eyebrow="Archetype & Cluster" title={archetype.primaryArchetype} />
 
         <ClusterMap
           points={archetype.clusterPoints}

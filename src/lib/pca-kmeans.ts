@@ -1,7 +1,8 @@
 /**
- * Minimal PCA (2D) + k-means used for archetype visualization, aligned with Analysis/cluster.py:
- * - KMeans on RPS-style skill vectors (here: mean cohort percentiles per ability).
- * - PCA projection for 2D scatter (PC1 / PC2).
+ * PCA (2D) + k-means for archetype visualization, aligned with Analysis/cluster.py:
+ * - KMeans(n_clusters=4, random_state=42, n_init=10) — k-means++ init, best run by inertia.
+ * - PCA(n_components=2, random_state=42) structure: center columns of X with sample mean,
+ *   covariance with divisor (n−1); first two PCs by power iteration on the covariance.
  */
 
 function zeros(rows: number, cols: number): number[][] {
@@ -38,8 +39,147 @@ function outer(u: number[], v: number[]): number[][] {
   return out;
 }
 
-function addMat(A: number[][], B: number[][]): number[][] {
-  return A.map((row, i) => row.map((x, j) => x + (B[i]?.[j] ?? 0)));
+function dist2Row(a: number[], b: number[]): number {
+  let s = 0;
+  for (let j = 0; j < a.length; j++) {
+    const d = (a[j] ?? 0) - (b[j] ?? 0);
+    s += d * d;
+  }
+  return s;
+}
+
+/** xorshift32 + Mulberry-ish mix → uniform [0, 1); deterministic stream per seed (approx. sklearn RNG usage). */
+function createRng(seed: number): { next01: () => number; nextInt: (bound: number) => number } {
+  let state = seed >>> 0 || 2463534242;
+  return {
+    next01(): number {
+      state ^= state << 13;
+      state >>>= 0;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      state >>>= 0;
+      const t = Math.imul(state ^ (state >>> 15), state | 1);
+      return ((t ^ (t >>> 7)) >>> 0) / 4294967296;
+    },
+    nextInt(bound: number): number {
+      if (bound <= 0) return 0;
+      return Math.floor(this.next01() * bound);
+    },
+  };
+}
+
+function kmeansPlusPlusCenters(X: number[][], k: number, rng: ReturnType<typeof createRng>): number[][] {
+  const n = X.length;
+  const centers: number[][] = [];
+  const c0 = rng.nextInt(n);
+  centers.push([...X[c0]!]);
+  while (centers.length < k) {
+    const distSq = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      let minD = Infinity;
+      for (const c of centers) {
+        const d2 = dist2Row(X[i]!, c);
+        if (d2 < minD) minD = d2;
+      }
+      distSq[i] = minD;
+    }
+    let total = 0;
+    for (let i = 0; i < n; i++) total += distSq[i]!;
+    if (total <= 0 || !Number.isFinite(total)) {
+      centers.push([...X[rng.nextInt(n)]!]);
+      continue;
+    }
+    let r = rng.next01() * total;
+    let pick = n - 1;
+    for (let i = 0; i < n; i++) {
+      r -= distSq[i]!;
+      if (r <= 0) {
+        pick = i;
+        break;
+      }
+    }
+    centers.push([...X[pick]!]);
+  }
+  return centers;
+}
+
+function inertiaLloyd(X: number[][], labels: number[], centers: number[][]): number {
+  let s = 0;
+  for (let i = 0; i < X.length; i++) {
+    const c = labels[i] ?? 0;
+    s += dist2Row(X[i]!, centers[c]!);
+  }
+  return s;
+}
+
+function kmeansSingle(
+  X: number[][],
+  k: number,
+  initCenters: number[][],
+  maxIter = 300,
+  tol = 1e-4,
+): { labels: number[]; centers: number[][] } {
+  const n = X.length;
+  const d = X[0]?.length ?? 0;
+  let centers = initCenters.map((row) => [...row]);
+  const labels = Array.from({ length: n }, () => 0);
+
+  for (let iter = 0; iter < maxIter; iter++) {
+    for (let i = 0; i < n; i++) {
+      let best = 0;
+      let bestD = Infinity;
+      for (let c = 0; c < k; c++) {
+        const d2 = dist2Row(X[i]!, centers[c]!);
+        if (d2 < bestD) {
+          bestD = d2;
+          best = c;
+        }
+      }
+      labels[i] = best;
+    }
+
+    const newCenters = zeros(k, d);
+    const counts = Array.from({ length: k }, () => 0);
+    for (let i = 0; i < n; i++) {
+      const c = labels[i]!;
+      counts[c]!++;
+      for (let j = 0; j < d; j++) {
+        newCenters[c]![j]! += X[i]![j] ?? 0;
+      }
+    }
+
+    for (let c = 0; c < k; c++) {
+      if (counts[c]! === 0) {
+        let bestI = 0;
+        let bestScore = -1;
+        for (let i = 0; i < n; i++) {
+          let minToOthers = Infinity;
+          for (let cc = 0; cc < k; cc++) {
+            if (cc === c) continue;
+            const dd = dist2Row(X[i]!, centers[cc]!);
+            if (dd < minToOthers) minToOthers = dd;
+          }
+          if (minToOthers > bestScore) {
+            bestScore = minToOthers;
+            bestI = i;
+          }
+        }
+        newCenters[c] = [...X[bestI]!];
+      } else {
+        const cnt = counts[c]!;
+        for (let j = 0; j < d; j++) newCenters[c]![j]! /= cnt;
+      }
+    }
+
+    let shift = 0;
+    for (let c = 0; c < k; c++) {
+      shift += dist2Row(centers[c]!, newCenters[c]!);
+    }
+    centers = newCenters;
+    if (shift <= tol) break;
+  }
+
+  return { labels, centers };
 }
 
 /** Column means of n×d matrix */
@@ -110,65 +250,40 @@ export function pcaTwoComponents(Xc: number[][]): { v1: number[]; v2: number[]; 
   return { v1: e1, v2: e2, scores };
 }
 
-export function kmeans(X: number[][], k: number, seed = 42): { labels: number[]; centers: number[][] } {
+/**
+ * K-means matching sklearn defaults used in Analysis/cluster.py:
+ * k-means++ initialization, n_init=10, max_iter=300, tol=1e-4, random_state stream from `seed`.
+ */
+export function kmeans(X: number[][], k: number, seed = 42, nInit = 10): { labels: number[]; centers: number[][] } {
   const n = X.length;
-  const d = X[0]?.length ?? 0;
   if (n === 0 || k <= 0) return { labels: [], centers: [] };
-
-  let rng = seed;
-  const rand = () => {
-    rng = (rng * 1103515245 + 12345) % 2147483647;
-    return rng / 2147483647;
-  };
-
-  const centers: number[][] = [];
-  const picks = new Set<number>();
-  while (centers.length < k && picks.size < n) {
-    const idx = Math.floor(rand() * n);
-    if (!picks.has(idx)) {
-      picks.add(idx);
-      centers.push([...X[idx]!]);
+  if (k === 1) {
+    const d = X[0]?.length ?? 0;
+    const mu = Array.from({ length: d }, () => 0);
+    for (const row of X) {
+      for (let j = 0; j < d; j++) mu[j]! += row[j] ?? 0;
     }
-  }
-  while (centers.length < k) {
-    centers.push([...X[centers.length % n]!]);
+    for (let j = 0; j < d; j++) mu[j]! /= n;
+    return { labels: Array.from({ length: n }, () => 0), centers: [mu] };
   }
 
-  const labels = Array.from({ length: n }, () => 0);
+  const rng = createRng(seed >>> 0);
+  let bestLabels: number[] = [];
+  let bestCenters: number[][] = [];
+  let bestInertia = Infinity;
 
-  for (let iter = 0; iter < 50; iter++) {
-    for (let i = 0; i < n; i++) {
-      let best = 0;
-      let bestD = Infinity;
-      for (let c = 0; c < k; c++) {
-        const dist = norm(subtract(X[i]!, centers[c]!));
-        if (dist < bestD) {
-          bestD = dist;
-          best = c;
-        }
-      }
-      labels[i] = best;
+  for (let run = 0; run < nInit; run++) {
+    const init = kmeansPlusPlusCenters(X, k, rng);
+    const { labels, centers } = kmeansSingle(X, k, init);
+    const inertia = inertiaLloyd(X, labels, centers);
+    if (inertia < bestInertia) {
+      bestInertia = inertia;
+      bestLabels = labels;
+      bestCenters = centers;
     }
-
-    const newCenters = zeros(k, d);
-    const counts = Array.from({ length: k }, () => 0);
-    for (let i = 0; i < n; i++) {
-      const c = labels[i]!;
-      counts[c]!++;
-      for (let j = 0; j < d; j++) {
-        newCenters[c]![j]! += X[i]![j] ?? 0;
-      }
-    }
-    for (let c = 0; c < k; c++) {
-      const cnt = Math.max(1, counts[c]!);
-      for (let j = 0; j < d; j++) {
-        newCenters[c]![j]! /= cnt;
-      }
-    }
-    centers.splice(0, centers.length, ...newCenters);
   }
 
-  return { labels, centers };
+  return { labels: bestLabels, centers: bestCenters };
 }
 
 /** Min-max scale each coordinate to [pad, size - pad] */

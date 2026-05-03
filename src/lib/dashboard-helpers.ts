@@ -43,7 +43,7 @@ export function getTier(score: number): ScoreTier {
 }
 
 /**
- * APS 0–100 band thresholds from Analysis/final_aps.py `assign_aps_band`
+ * APS 0–100 band thresholds from Analysis/final_aps_new.py `assign_aps_band`
  * (differs from `getTier` at the 30 boundary: APS uses strict `< 30` for Foundation).
  */
 export function performanceBandFromAps(score: number): ScoreTier {
