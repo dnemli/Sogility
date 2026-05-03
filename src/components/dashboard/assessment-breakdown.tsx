@@ -11,9 +11,24 @@ type AssessmentBreakdownProps = {
   abilities: AbilityBreakdownRow[];
   playerName: string;
   forceMobileLayout?: boolean;
+  /** Desktop table header for the band column (default “Score tier”). */
+  performanceBandColumnLabel?: string;
+  /** Label used in ability summary lines, e.g. “avg APS 12.3” vs “avg Skill Score 12.3”. */
+  abilityAvgScoreLabel?: string;
+  /** Section subtitle under eyebrow/title (default mentions session log). */
+  sectionDescription?: string;
+  /** Panel heading above expanded assessment rows when tests exist. */
+  mappedAssessmentsHeading?: string;
 };
 
-export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout = false }: AssessmentBreakdownProps) {
+export function AssessmentBreakdown({
+  abilities,
+  playerName,
+  forceMobileLayout = false,
+  performanceBandColumnLabel = "Score tier",
+  sectionDescription = "Each row is a skill ability. Expand to see individual assessments from the session log.",
+  mappedAssessmentsHeading = "Tests (from training_session.csv)",
+}: AssessmentBreakdownProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const toggle = (key: string) => {
@@ -25,8 +40,8 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
       <div className="flex flex-col gap-4 sm:gap-6">
         <SectionHeading
           eyebrow="Abilities"
-          title={`${playerName} — ability snapshot`}
-          description="Each row is a skill ability. Expand to see individual assessments from the session log."
+          title={`${playerName} ability snapshot`}
+          description={sectionDescription}
         />
 
         <div className="overflow-hidden rounded-[24px] border border-[#1E2D40] bg-[#0F2236]">
@@ -37,7 +52,7 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
             )}
           >
             <span>Ability</span>
-            <span>Score tier</span>
+            <span>{performanceBandColumnLabel}</span>
           </div>
 
           <div className="divide-y divide-[#1E2D40]">
@@ -67,8 +82,7 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
                         <p className="text-sm font-semibold text-[#E0E8F0] sm:text-base">{row.ability}</p>
                         {hasTests ? (
                           <p className="mt-0.5 text-xs text-[#9AB0C0] sm:text-sm">
-                            {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg APS{" "}
-                            {row.avgAps.toFixed(1)}
+                            {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"}
                           </p>
                         ) : null}
                       </div>
@@ -94,7 +108,7 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
                       {hasTests ? (
                         <>
                           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#6A8090]">
-                            Tests (from training_session.csv)
+                            {mappedAssessmentsHeading}
                           </p>
                           <div className="flex flex-col gap-3 sm:gap-4">
                             {row.tests.map((t) => (

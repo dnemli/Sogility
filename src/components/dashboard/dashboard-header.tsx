@@ -8,6 +8,9 @@ type DashboardHeaderProps = {
   selectedPlayerId: string;
   onPlayerChange: (playerId: string) => void;
   forceMobileLayout?: boolean;
+  /** Render the paragraph below the player name (off for compact trainer header). */
+  showSubtitle?: boolean;
+  subtitle?: string;
 };
 
 export function DashboardHeader({
@@ -16,6 +19,8 @@ export function DashboardHeader({
   selectedPlayerId,
   onPlayerChange,
   forceMobileLayout = false,
+  showSubtitle = true,
+  subtitle = "A clear view of how each player is performing against academy benchmarks and against similar players in their cohort.",
 }: DashboardHeaderProps) {
   return (
     <SurfaceCard className="relative overflow-hidden bg-[#131F2E]">
@@ -34,9 +39,9 @@ export function DashboardHeader({
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#E0E8F0] sm:text-4xl">
               {displayProfile.playerName}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#9AB0C0] sm:text-base">
-              A clear view of how each player is performing against academy benchmarks and against similar players in their cohort.
-            </p>
+            {showSubtitle ? (
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#9AB0C0] sm:text-base">{subtitle}</p>
+            ) : null}
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F1923]">
                 {displayProfile.playerName}

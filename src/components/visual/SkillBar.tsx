@@ -44,7 +44,6 @@ export function SkillBar({ name, score, tier, min = 0, max = 100 }: SkillBarProp
       <div className="flex items-center justify-between gap-3">
         <span className="text-[13px] font-medium text-[#E0E8F0]">{name}</span>
         <div className="flex items-center gap-2">
-          <span className="text-[13px] font-semibold text-[#E0E8F0]">{clamped.toFixed(1)}</span>
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${bandTextMap[tierKey]}`}
           >

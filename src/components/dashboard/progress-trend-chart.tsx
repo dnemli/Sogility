@@ -16,6 +16,12 @@ type ProgressTrendChartProps = {
   description: string;
   points: ProgressPoint[];
   forceMobileLayout?: boolean;
+  /** Axis, tooltip, and line series label (default matches legacy “SGI Score” wording). */
+  scoreSeriesLabel?: string;
+  /** Footer title above latest value (default “Latest month (SGI Score)”). */
+  latestMonthTitle?: string;
+  /** Explanation under latest value in footer. */
+  latestMonthFootnote?: string;
 };
 
 export function ProgressTrendChart({
@@ -23,6 +29,9 @@ export function ProgressTrendChart({
   description,
   points,
   forceMobileLayout = false,
+  scoreSeriesLabel = "SGI Score",
+  latestMonthTitle = "Latest month (SGI Score)",
+  latestMonthFootnote = "SGI Score is shown on a 30-99 scale and is derived from cohort-relative standing for that month.",
 }: ProgressTrendChartProps) {
   const latest = points[points.length - 1]?.rps ?? 0;
 
@@ -66,7 +75,7 @@ export function ProgressTrendChart({
                 axisLine={false}
                 tick={{ fill: "#9AB0C0", fontSize: 12 }}
                 label={{
-                  value: "SGI Score",
+                  value: scoreSeriesLabel,
                   angle: -90,
                   position: "insideLeft",
                   fill: "#9AB0C0",
@@ -74,13 +83,13 @@ export function ProgressTrendChart({
                 }}
               />
               <Tooltip
-                formatter={(value: number) => [`${value}`, "SGI Score"]}
+                formatter={(value: number) => [`${value}`, scoreSeriesLabel]}
                 labelFormatter={(label) => `${label}`}
               />
               <Line
                 type="monotone"
                 dataKey="rps"
-                name="SGI Score"
+                name={scoreSeriesLabel}
                 stroke="#3ECF8E"
                 strokeWidth={3}
                 dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
@@ -91,11 +100,9 @@ export function ProgressTrendChart({
           )}
         </div>
         <div className="rounded-[24px] border border-[#1E2D40] bg-[#0F2236] p-4">
-          <p className="text-sm font-medium text-[#6A8090]">Latest month (SGI Score)</p>
+          <p className="text-sm font-medium text-[#6A8090]">{latestMonthTitle}</p>
           <p className="mt-1 text-2xl font-semibold text-[#E0E8F0]">{latest.toFixed(1)}</p>
-          <p className="mt-2 text-xs leading-5 text-[#9AB0C0]">
-            SGI Score is shown on a 30-99 scale and is derived from cohort-relative standing for that month.
-          </p>
+          <p className="mt-2 text-xs leading-5 text-[#9AB0C0]">{latestMonthFootnote}</p>
         </div>
       </div>
     </SurfaceCard>

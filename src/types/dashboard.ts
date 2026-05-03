@@ -94,13 +94,12 @@ export type SkillProgressPoint = {
 };
 
 export type AssessmentHistoryItem = {
+  /** Sort key (ISO day); not shown in assessment history table. */
   date: string;
   assessmentName: string;
   ability: AbilityName;
-  /** Cohort sigmoid RPS / SGI (30–99) — headline trend metric; not paired with APS tier bands. */
+  /** Displayed cohort RPS / overall score on 30–99 scale. */
   sgiScore: number;
-  /** Weighted APS 0–100 — pairs with `tier` band. */
-  apsScore: number;
   tier: PerformanceBand;
 };
 
@@ -151,6 +150,8 @@ export type CohortInsightCopy = {
 export type PlayerDashboardView = {
   id: string;
   profile: PlayerProfile;
+  /** Trainer players list accent: 1 = ages 0–10 (tier letters A–B), 2 = 11–15 (C–D), 3 = 16+ (E–F+). */
+  trainerAgeBracketGroup: 1 | 2 | 3;
   summaryMetrics: SummaryMetric[];
   progressTrend: ProgressPoint[];
   skillProgress: Record<AbilityName, SkillProgressPoint[]>;

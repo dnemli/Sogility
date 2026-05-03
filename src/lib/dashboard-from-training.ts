@@ -18,6 +18,7 @@ import { clampDisplayedScore, getScoreChange } from "./dashboard-helpers";
 import type { TrainingSessionRowEnriched } from "./training-cohort-percentiles";
 import {
   buildTrainingScoringSnapshot,
+  pythonAgeGroupFromLetter,
   scoringPlayerKey,
   snapshotAssessmentRps,
   snapshotCategoryApsScore,
@@ -468,8 +469,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
           assessmentName: `${cur.category} ${cur.drill}`,
           ability,
           sgiScore: Math.round(currentSgi * 10) / 10,
-          apsScore: drillAps,
-          tier: performanceBand,
+          tier: wa.band,
         });
       }
     }
@@ -541,6 +541,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     return {
       id: profile.playerName,
       profile,
+      trainerAgeBracketGroup: pythonAgeGroupFromLetter(latest.ageLetter),
       summaryMetrics,
       progressTrend: progressPoints,
       skillProgress,

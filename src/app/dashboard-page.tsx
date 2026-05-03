@@ -21,7 +21,7 @@ import { PlayerSearch } from "../components/dashboard/player-search";
 import { ABILITY_ORDER } from "../lib/assessment-to-ability";
 import { bandTextMap, getTier, type ScoreTier } from "../lib/dashboard-helpers";
 import { ScoreRing, SkillBar, SectionHeader } from "../components/visual";
-import type { PlayerDashboardView, TrainerSavedAssessment } from "../types/dashboard";
+import type { AbilityName, PlayerDashboardView, SummaryMetric, TrainerSavedAssessment } from "../types/dashboard";
 import { TrainerNewAssessmentForm } from "../components/dashboard/trainer-new-assessment-form";
 
 type RoleView = "Trainer View" | "Parent/Player View";
@@ -62,6 +62,30 @@ function getOverallTier(player: PlayerDashboardView): ScoreTier {
   return getTier(getOverallScore(player));
 }
 
+/** Trainer View: concise KPI labels; data values unchanged from source metrics. */
+function trainerFacingSummaryMetrics(player: PlayerDashboardView): SummaryMetric[] {
+  const tier = player.summaryMetrics.find((m) => m.label === "SGI tier");
+  const overall = player.summaryMetrics.find((m) => m.label === "Overall SGI");
+  if (!tier || !overall) return player.summaryMetrics;
+
+  return [
+    {
+      ...tier,
+      label: "Performance Band",
+      description: "Based on skill category performance.",
+      changeDirection: tier.changeDirection,
+      changeText: tier.changeText,
+    },
+    {
+      ...overall,
+      label: "Overall Score",
+      description: "Compared with players in the same age and gender cohort.",
+      changeText: "vs similar players",
+      changeDirection: overall.changeDirection,
+    },
+  ];
+}
+
 function initials(playerName: string): string {
   return playerName
     .split(" ")
@@ -79,11 +103,17 @@ function scoreBarColor(tier: ScoreTier): string {
   return "#C4B5FD";
 }
 
+function trainerPlayersListAccentColor(bucket: PlayerDashboardView["trainerAgeBracketGroup"]): string {
+  if (bucket === 1) return "#FCD34D";
+  if (bucket === 2) return "#A3E635";
+  return "#38BDF8";
+}
+
 function parseIsoDate(value: string): Date {
   return new Date(`${value}T00:00:00`);
 }
 
-/** Latest session date for display when history omits APS-unmapped drills. */
+/** Uses newest row in APS-mapped assessment history; falls back to ability breakdown session labels when empty. */
 function latestAssessmentDateLabel(player: PlayerDashboardView): string {
   const fromHistory = player.assessmentHistory[0]?.date;
   if (fromHistory) return fromHistory;
@@ -129,12 +159,13 @@ function TrainerFlow({
   const [newAssessmentReturnView, setNewAssessmentReturnView] = useState<NewAssessmentReturnView>("detail");
   const [trainerSavedAssessments, setTrainerSavedAssessments] = useState<TrainerSavedAssessment[]>([]);
   const [playerQuery, setPlayerQuery] = useState("");
+  const [selectedTrainerSkill, setSelectedTrainerSkill] = useState<AbilityName>("Passing");
   const currentPlayer = resolveSelectedPlayer(selectedPlayerId);
   const visibleTrend = currentPlayer.progressTrend.slice(-PROGRESS_POINTS);
+  const trainerSkillProgressPts = currentPlayer.skillProgress[selectedTrainerSkill] ?? [];
   const filteredPlayers = dashboardCollection.players.filter((player) =>
     player.profile.playerName.toLowerCase().includes(playerQuery.trim().toLowerCase()),
   );
-  const shouldShowFoundationLegend = dashboardCollection.players.some((player) => getOverallScore(player) < 30);
   const playersCount = dashboardCollection.players.length;
   const avgScore =
     dashboardCollection.players.length === 0
@@ -214,34 +245,24 @@ function TrainerFlow({
               </div>
 
               <div className="mb-1 flex flex-wrap items-center gap-3 text-xs font-medium text-[#9AB0C0]">
-                {shouldShowFoundationLegend ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#FB7185]" />
-                    Foundation
-                  </span>
-                ) : null}
                 <span className="inline-flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#FCD34D]" />
-                  Developing
+                  ages 0-10
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#A3E635]" />
-                  Approaching
+                  ages 11-15
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#38BDF8]" />
-                  Strong
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#C4B5FD]" />
-                  Elite
+                  ages 16+
                 </span>
               </div>
 
               <div className="flex flex-col gap-3">
                 {filteredPlayers.map((player) => {
                   const score = getOverallScore(player);
-                  const tier = getOverallTier(player);
+                  const bracketColor = trainerPlayersListAccentColor(player.trainerAgeBracketGroup);
                   const assessmentDate = latestAssessmentDateLabel(player);
                   return (
                     <button
@@ -254,7 +275,7 @@ function TrainerFlow({
                         <div className="flex min-w-0 items-center gap-3">
                           <span
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 text-[15px] font-bold"
-                            style={{ borderColor: scoreBarColor(tier), color: scoreBarColor(tier) }}
+                            style={{ borderColor: bracketColor, color: bracketColor }}
                           >
                             {initials(player.profile.playerName)}
                           </span>
@@ -265,7 +286,7 @@ function TrainerFlow({
                         </div>
                         <div
                           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl font-bold leading-none"
-                          style={{ borderColor: scoreBarColor(tier), color: scoreBarColor(tier) }}
+                          style={{ borderColor: bracketColor, color: bracketColor }}
                         >
                           {Math.round(score)}
                         </div>
@@ -276,7 +297,7 @@ function TrainerFlow({
                           className="h-full rounded-full"
                           style={{
                             width: `${Math.max(0, Math.min(100, score))}%`,
-                            backgroundColor: scoreBarColor(tier),
+                            backgroundColor: bracketColor,
                           }}
                         />
                       </div>
@@ -320,9 +341,10 @@ function TrainerFlow({
                 selectedPlayerId={currentPlayer.id}
                 onPlayerChange={onPlayerChange}
                 forceMobileLayout={isPhoneView}
+                showSubtitle={false}
               />
 
-              <KpiSection metrics={currentPlayer.summaryMetrics} forceMobileLayout={isPhoneView} />
+              <KpiSection metrics={trainerFacingSummaryMetrics(currentPlayer)} forceMobileLayout={isPhoneView} />
 
               {trainerRecordedForPlayer(currentPlayer.id).length > 0 ? (
                 <SurfaceCard className="space-y-3">
@@ -330,7 +352,7 @@ function TrainerFlow({
                     Trainer-recorded assessments
                   </p>
                   <p className="text-xs text-[#9AB0C0]">
-                    Entries saved from New Assessment below. Raw drill scores — not rerolled into overall SGI in this prototype.
+                    Saved from New Assessment. Not included in the overall score rollup.
                   </p>
                   <ul className="flex flex-col gap-2.5">
                     {trainerRecordedForPlayer(currentPlayer.id).map((entry) => (
@@ -366,7 +388,7 @@ function TrainerFlow({
 
               <div className="flex flex-col gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
-                  Player detail views
+                  Player details
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {trainerPlayerTabs.map((tab) => (
@@ -388,23 +410,164 @@ function TrainerFlow({
               </div>
 
               {trainerPlayerTab === "Progress over time" ? (
-                <section className={cn("grid gap-4", isPhoneView ? "grid-cols-1" : "xl:grid-cols-[1.4fr_1fr]")}>
-                  <ProgressTrendChart
-                    title="Score over time"
-                    description="Monthly SGI Score trend for each month this player has sessions. Higher values indicate stronger standing vs similar peers."
-                    points={visibleTrend}
-                    forceMobileLayout={isPhoneView}
-                  />
-                  <DistributionChart
-                    title="Cohort distribution snapshot"
-                    description="Where this player's SGI Score sits within the peer distribution."
-                    distribution={{
-                      ...currentPlayer.cohortDistribution,
-                      cohortLabel: currentPlayer.profile.cohortName,
-                    }}
-                    forceMobileLayout={isPhoneView}
-                  />
-                </section>
+                <div className="flex flex-col gap-4">
+                  <section className={cn("grid gap-4", isPhoneView ? "grid-cols-1" : "xl:grid-cols-[1.4fr_1fr]")}>
+                    <ProgressTrendChart
+                      title="Score over time"
+                      description="Overall score by month where sessions exist."
+                      points={visibleTrend}
+                      forceMobileLayout={isPhoneView}
+                      scoreSeriesLabel="Score"
+                      latestMonthTitle="Latest month (Score)"
+                      latestMonthFootnote="Scale 30–99. Compared with similar players."
+                    />
+                    <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                            Skill progress over time
+                          </p>
+                          <select
+                            value={selectedTrainerSkill}
+                            onChange={(event) =>
+                              setSelectedTrainerSkill(event.target.value as AbilityName)
+                            }
+                            className="rounded-xl border border-[#1E2D40] bg-[#0F2236] px-3 py-2 text-sm font-medium text-[#E0E8F0]"
+                          >
+                            {ABILITY_ORDER.map((skill) => (
+                              <option key={skill} value={skill}>
+                                {skill}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="h-[220px] sm:h-[240px]">
+                          {trainerSkillProgressPts.length === 0 ? (
+                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#1E2D40] bg-[#0F2236] px-6 text-center text-sm text-[#9AB0C0]">
+                              No monthly progress data available for {selectedTrainerSkill} yet.
+                            </div>
+                          ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart
+                                data={trainerSkillProgressPts}
+                                margin={{ top: 8, right: 12, left: -18, bottom: 0 }}
+                              >
+                                <CartesianGrid strokeDasharray="4 8" stroke="rgba(148, 163, 184, 0.22)" />
+                                <XAxis
+                                  dataKey="label"
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tick={{ fill: "#9AB0C0", fontSize: 11 }}
+                                />
+                                <YAxis
+                                  domain={[30, 99]}
+                                  tickCount={6}
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tick={{ fill: "#9AB0C0", fontSize: 11 }}
+                                />
+                                <Tooltip
+                                  formatter={(value: number) => [`${value}`, "Skill Score"]}
+                                  labelFormatter={(label) => `${label}`}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="score"
+                                  name="Skill Score"
+                                  stroke="#3ECF8E"
+                                  strokeWidth={3}
+                                  dot={{ r: 2.5, strokeWidth: 2, fill: "#ffffff" }}
+                                  activeDot={{ r: 4 }}
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          )}
+                        </div>
+                      </div>
+                    </SurfaceCard>
+                  </section>
+                  <SurfaceCard className="rounded-2xl border-[#1E2D40] bg-[#131F2E] p-4 shadow-none">
+                    <div className="flex flex-col gap-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6A8090]">
+                        Assessment History
+                      </p>
+                      {currentPlayer.assessmentHistory.length === 0 ? (
+                        <p className="text-sm text-[#9AB0C0]">No assessment history available.</p>
+                      ) : (
+                        <>
+                          <div className="flex flex-col gap-2.5 md:hidden">
+                            {currentPlayer.assessmentHistory.map((entry) => (
+                              <div
+                                key={`${entry.date}-${entry.assessmentName}-trainer`}
+                                className="rounded-xl border border-[#1E2D40] bg-[#0F2236] px-3.5 py-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-[#E0E8F0]">
+                                      {entry.assessmentName}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                      bandTextMap[entry.tier],
+                                    )}
+                                  >
+                                    {entry.tier}
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex flex-col gap-1 text-xs">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[#9AB0C0]">{entry.ability}</span>
+                                    <span className="font-semibold text-[#E0E8F0]">
+                                      Score {entry.sgiScore.toFixed(1)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="hidden max-h-[320px] overflow-auto rounded-2xl border border-[#1E2D40] md:block">
+                            <table className="w-full border-collapse text-sm">
+                              <thead className="sticky top-0 bg-[#0F2236] text-left text-xs uppercase tracking-[0.14em] text-[#9AB0C0]">
+                                <tr>
+                                  <th className="px-3 py-2">Assessment</th>
+                                  <th className="px-3 py-2">Skill</th>
+                                  <th className="px-3 py-2">Score</th>
+                                  <th className="px-3 py-2">Performance Band</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {currentPlayer.assessmentHistory.map((entry) => (
+                                  <tr
+                                    key={`${entry.date}-${entry.assessmentName}-trainer`}
+                                    className="border-t border-[#1E2D40]"
+                                  >
+                                    <td className="px-3 py-2 text-[#E0E8F0]">{entry.assessmentName}</td>
+                                    <td className="px-3 py-2 text-[#9AB0C0]">{entry.ability}</td>
+                                    <td className="px-3 py-2 font-semibold text-[#E0E8F0]">
+                                      {entry.sgiScore.toFixed(1)}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <span
+                                        className={cn(
+                                          "rounded-full px-2 py-0.5 text-xs font-semibold",
+                                          bandTextMap[entry.tier],
+                                        )}
+                                      >
+                                        {entry.tier}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </SurfaceCard>
+                </div>
               ) : null}
 
               {trainerPlayerTab === "Abilities" ? (
@@ -413,6 +576,21 @@ function TrainerFlow({
                     abilities={currentPlayer.abilityBreakdown}
                     playerName={currentPlayer.profile.playerName}
                     forceMobileLayout={isPhoneView}
+                    performanceBandColumnLabel="Performance Band"
+                    abilityAvgScoreLabel="Skill Score"
+                    sectionDescription="Expand a skill to view mapped assessments."
+                    mappedAssessmentsHeading="Mapped Assessments"
+                  />
+                  <DistributionChart
+                    title="Peer distribution snapshot"
+                    description="Compared with peers in the same age and gender cohort."
+                    distribution={{
+                      ...currentPlayer.cohortDistribution,
+                      cohortLabel: currentPlayer.profile.cohortName,
+                    }}
+                    forceMobileLayout={isPhoneView}
+                    histogramTooltipLabel="Players in bucket"
+                    whatThisShows="Where this player falls on overall score versus peers."
                   />
                 </section>
               ) : null}
@@ -678,7 +856,6 @@ function ParentPlayerFlow({
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-[#E0E8F0]">{entry.assessmentName}</p>
-                              <p className="mt-0.5 text-xs text-[#9AB0C0]">{entry.date}</p>
                             </div>
                             <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", bandTextMap[entry.tier])}>
                               {entry.tier}
@@ -687,9 +864,7 @@ function ParentPlayerFlow({
                           <div className="mt-2 flex flex-col gap-1 text-xs">
                             <div className="flex items-center justify-between">
                               <span className="text-[#9AB0C0]">{entry.ability}</span>
-                              <span className="font-semibold text-[#E0E8F0]">
-                                SGI {entry.sgiScore.toFixed(1)} · APS {entry.apsScore.toFixed(1)}
-                              </span>
+                              <span className="font-semibold text-[#E0E8F0]">Score {entry.sgiScore.toFixed(1)}</span>
                             </div>
                           </div>
                         </div>
@@ -699,22 +874,18 @@ function ParentPlayerFlow({
                     <table className="w-full border-collapse text-sm">
                       <thead className="sticky top-0 bg-[#0F2236] text-left text-xs uppercase tracking-[0.14em] text-[#9AB0C0]">
                         <tr>
-                          <th className="px-3 py-2">Date</th>
                           <th className="px-3 py-2">Assessment</th>
                           <th className="px-3 py-2">Skill</th>
-                          <th className="px-3 py-2">SGI</th>
-                          <th className="px-3 py-2">APS</th>
-                          <th className="px-3 py-2">Tier</th>
+                          <th className="px-3 py-2">Score</th>
+                          <th className="px-3 py-2">Performance Band</th>
                         </tr>
                       </thead>
                       <tbody>
                         {currentPlayer.assessmentHistory.map((entry) => (
                           <tr key={`${entry.date}-${entry.assessmentName}`} className="border-t border-[#1E2D40]">
-                            <td className="px-3 py-2 text-[#9AB0C0]">{entry.date}</td>
                             <td className="px-3 py-2 text-[#E0E8F0]">{entry.assessmentName}</td>
                             <td className="px-3 py-2 text-[#9AB0C0]">{entry.ability}</td>
                             <td className="px-3 py-2 font-semibold text-[#E0E8F0]">{entry.sgiScore.toFixed(1)}</td>
-                            <td className="px-3 py-2 font-semibold text-[#E0E8F0]">{entry.apsScore.toFixed(1)}</td>
                             <td className="px-3 py-2">
                               <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", bandTextMap[entry.tier])}>
                                 {entry.tier}

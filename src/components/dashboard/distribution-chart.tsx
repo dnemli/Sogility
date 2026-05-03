@@ -17,6 +17,10 @@ type DistributionChartProps = {
   description: string;
   distribution: CohortDistribution;
   forceMobileLayout?: boolean;
+  /** Tooltip label for histogram bar values (default “Cohort count”). */
+  histogramTooltipLabel?: string;
+  /** Copy for the “What this shows” footer cell. */
+  whatThisShows?: string;
 };
 
 export function DistributionChart({
@@ -24,6 +28,8 @@ export function DistributionChart({
   description,
   distribution,
   forceMobileLayout = false,
+  histogramTooltipLabel = "Cohort count",
+  whatThisShows = "The marker shows where this player's SGI Score sits in the cohort distribution from the training log.",
 }: DistributionChartProps) {
   return (
     <SurfaceCard className="h-full">
@@ -56,7 +62,7 @@ export function DistributionChart({
                 tick={{ fill: "#9AB0C0", fontSize: 12 }}
               />
               <Tooltip
-                formatter={(value: number) => [`${value} players`, "Cohort count"]}
+                formatter={(value: number) => [`${value} players`, histogramTooltipLabel]}
                 labelFormatter={(label) => `Score bucket midpoint: ${label}`}
               />
               <Bar dataKey="count" barSize={18} fill="#1E2D40" radius={[12, 12, 0, 0]} />
@@ -91,9 +97,7 @@ export function DistributionChart({
           </div>
           <div>
             <p className="text-sm font-medium text-[#6A8090]">What this shows</p>
-            <p className="mt-1 text-sm leading-6 text-[#9AB0C0]">
-              The marker shows where this player's SGI Score sits in the cohort distribution from the training log.
-            </p>
+            <p className="mt-1 text-sm leading-6 text-[#9AB0C0]">{whatThisShows}</p>
           </div>
         </div>
       </div>
