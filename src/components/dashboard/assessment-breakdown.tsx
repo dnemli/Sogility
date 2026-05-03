@@ -67,7 +67,7 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
                         <p className="text-sm font-semibold text-[#E0E8F0] sm:text-base">{row.ability}</p>
                         {hasTests ? (
                           <p className="mt-0.5 text-xs text-[#9AB0C0] sm:text-sm">
-                            {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg score{" "}
+                            {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg APS{" "}
                             {row.avgAps.toFixed(1)}
                           </p>
                         ) : null}

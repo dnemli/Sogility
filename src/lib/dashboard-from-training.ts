@@ -14,8 +14,16 @@ import type {
 } from "../types/dashboard";
 import { ABILITY_ORDER, mapAssessmentToAbility } from "./assessment-to-ability";
 import { tierLetterToAgeGroupLabel } from "./age-group-labels";
-import { clampDisplayedScore, getScoreChange, getTier } from "./dashboard-helpers";
+import { clampDisplayedScore, getScoreChange } from "./dashboard-helpers";
 import type { TrainingSessionRowEnriched } from "./training-cohort-percentiles";
+import {
+  buildTrainingScoringSnapshot,
+  snapshotAssessmentRps,
+  snapshotCategoryApsScore,
+  snapshotCategoryBand,
+  snapshotWeightedAps,
+  type TrainingScoringSnapshot,
+} from "./training-scoring";
 import {
   centerMatrix,
   colMeans,
@@ -81,10 +89,6 @@ function assignClusterArchetypes(centers: number[][]): string[] {
   return names;
 }
 
-function bandFromPct(pct: number): PerformanceBand {
-  return getTier(pct);
-}
-
 function formatOrdinal(n: number): string {
   const r = Math.round(n);
   const j = r % 10;
@@ -129,7 +133,11 @@ function imputeSkillMatrix(X: (number | null)[][]): number[][] {
   return X.map((row) => row.map((x, j) => (x === null || Number.isNaN(x!) ? colMeans[j]! : x!)));
 }
 
-function skillVectorForPlayer(rows: TrainingSessionRowEnriched[]): (number | null)[] {
+function skillVectorForPlayer(
+  rows: TrainingSessionRowEnriched[],
+  rowIndex: (r: TrainingSessionRowEnriched) => number,
+  scoring: TrainingScoringSnapshot,
+): (number | null)[] {
   const buckets: Record<AbilityName, number[]> = {
     Dribbling: [],
     Passing: [],
@@ -140,7 +148,10 @@ function skillVectorForPlayer(rows: TrainingSessionRowEnriched[]): (number | nul
   for (const r of rows) {
     const ab = mapAssessmentToAbility(r.category, r.drill);
     if (!ab) continue;
-    buckets[ab].push(r.cohortPercentile);
+    const ix = rowIndex(r);
+    const rps = scoring.rowRpsCohortByIndex[ix];
+    if (rps === null || rps === undefined || !Number.isFinite(rps)) continue;
+    buckets[ab].push(rps);
   }
   return ABILITY_ORDER.map((k) => {
     const arr = buckets[k];
@@ -164,12 +175,16 @@ type ArchetypeLayout = {
   byPlayer: Map<string, ArchetypeSummary>;
 };
 
-function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
+function buildArchetypeLayout(
+  aggs: PlayerAgg[],
+  rowIndex: (r: TrainingSessionRowEnriched) => number,
+  scoring: TrainingScoringSnapshot,
+): ArchetypeLayout {
   const byPlayer = new Map<string, ArchetypeSummary>();
   const n = aggs.length;
   if (n === 0) return { byPlayer };
 
-  const raw: (number | null)[][] = aggs.map((a) => skillVectorForPlayer(a.rows));
+  const raw: (number | null)[][] = aggs.map((a) => skillVectorForPlayer(a.rows, rowIndex, scoring));
   const X = imputeSkillMatrix(raw);
   const kCl = Math.min(4, Math.max(1, n));
 
@@ -221,7 +236,7 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
     byPlayer.set(pk, {
       primaryArchetype: primary,
       summary: `K-means (${kCl} clusters) on five skill signals, projected with PCA (same structure as Analysis/cluster.py).`,
-      coachInsight: `Skill vector (cohort %): Drib ${vec[0]!.toFixed(0)}, Pass ${vec[1]!.toFixed(0)}, Vision ${vec[2]!.toFixed(0)}, Agility ${vec[3]!.toFixed(0)}, First Touch ${vec[4]!.toFixed(0)}.`,
+      coachInsight: `Skill vector (cohort SGI / RPS): Drib ${vec[0]!.toFixed(0)}, Pass ${vec[1]!.toFixed(0)}, Vision ${vec[2]!.toFixed(0)}, Agility ${vec[3]!.toFixed(0)}, First Touch ${vec[4]!.toFixed(0)}.`,
       clusterPoints: clusters.map((c) => ({ label: c.label, x: c.x, y: c.y, color: c.color })),
       playerPoint: {
         label: "",
@@ -240,31 +255,38 @@ function buildArchetypeLayout(aggs: PlayerAgg[]): ArchetypeLayout {
 }
 
 export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRowEnriched[]): DashboardCollection {
+  const rowIndexByRef = new Map<TrainingSessionRowEnriched, number>();
+  allRows.forEach((r, i) => rowIndexByRef.set(r, i));
+  const scoring = buildTrainingScoringSnapshot(allRows);
+
   const byPlayer = new Map<string, TrainingSessionRowEnriched[]>();
   for (const r of allRows) {
     const k = playerKey(r);
     byPlayer.set(k, [...(byPlayer.get(k) ?? []), r]);
   }
 
-  const cohortComposites = new Map<string, number[]>();
+  const cohortOverallRps = new Map<string, number[]>();
   const aggs: PlayerAgg[] = [];
 
   for (const [key, rows] of byPlayer) {
     if (rows.length < 1) continue;
     const latestRow = rows.reduce((a, b) => (a.sessionDate >= b.sessionDate ? a : b));
     const cohortKey = `${latestRow.ageLetter}|${latestRow.genderRaw}`;
-    const composite = rows.reduce((s, x) => s + x.percentile, 0) / rows.length;
+    const overallRps = scoring.overallCohortRpsByPlayer.get(key);
+    const composite = Number.isFinite(overallRps) ? overallRps! : 30;
     aggs.push({ key, rows, composite, cohortKey });
-    cohortComposites.set(cohortKey, [...(cohortComposites.get(cohortKey) ?? []), composite]);
+    cohortOverallRps.set(cohortKey, [...(cohortOverallRps.get(cohortKey) ?? []), composite]);
   }
 
-  const rpsByPlayer = new Map<string, number>();
+  const cohortPercentileRank = new Map<string, number>();
   for (const a of aggs) {
-    const peers = cohortComposites.get(a.cohortKey) ?? [a.composite];
-    rpsByPlayer.set(a.key, percentileInSample(peers, a.composite));
+    const peers = cohortOverallRps.get(a.cohortKey) ?? [a.composite];
+    cohortPercentileRank.set(a.key, percentileInSample(peers, a.composite));
   }
 
-  const archetypeLayout = buildArchetypeLayout(aggs);
+  const rowIx = (r: TrainingSessionRowEnriched) => rowIndexByRef.get(r) ?? 0;
+
+  const archetypeLayout = buildArchetypeLayout(aggs, rowIx, scoring);
 
   const players: PlayerDashboardView[] = aggs.map((a) => {
     const rows = [...a.rows].sort((x, y) => x.sessionDate.getTime() - y.sessionDate.getTime());
@@ -279,8 +301,10 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       trackingWindow: `${rows[0]!.isoDate.slice(0, 4)}–${latest.isoDate.slice(0, 4)}`,
     };
 
-    const rpsRaw = rpsByPlayer.get(a.key) ?? 0;
-    const sgi = clampDisplayedScore(rpsRaw);
+    const rpsRaw = cohortPercentileRank.get(a.key) ?? 0;
+    const overallCohortRps = scoring.overallCohortRpsByPlayer.get(a.key) ?? 30;
+    const sgi = clampDisplayedScore(overallCohortRps);
+    const overallApsBand = scoring.finalApsByPlayer.get(a.key)?.band ?? ("Foundation" as PerformanceBand);
 
     const byMonth = new Map<string, TrainingSessionRowEnriched[]>();
     for (const r of rows) {
@@ -292,15 +316,25 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     const lastMk = monthKeys[monthKeys.length - 1]!;
     const prevMk = monthKeys[monthKeys.length - 2];
 
-    const meanPct = (list: TrainingSessionRowEnriched[]) =>
-      list.length === 0 ? 0 : list.reduce((s, x) => s + x.percentile, 0) / list.length;
+    const meanRps = (list: TrainingSessionRowEnriched[]) => {
+      if (list.length === 0) return 0;
+      let s = 0;
+      let c = 0;
+      for (const x of list) {
+        const v = scoring.rowRpsCohortByIndex[rowIx(x)];
+        if (v !== null && v !== undefined && Number.isFinite(v)) {
+          s += v;
+          c += 1;
+        }
+      }
+      return c ? s / c : 0;
+    };
 
-    const currentMonthMean = meanPct(byMonth.get(lastMk) ?? []);
-    const priorMonthMean = prevMk ? meanPct(byMonth.get(prevMk) ?? []) : currentMonthMean;
+    const currentMonthMean = meanRps(byMonth.get(lastMk) ?? []);
+    const priorMonthMean = prevMk ? meanRps(byMonth.get(prevMk) ?? []) : currentMonthMean;
 
     const apsDelta = currentMonthMean - priorMonthMean;
     const apsTrend: TrendDirection = Math.abs(apsDelta) < 0.5 ? "flat" : apsDelta > 0 ? "up" : "down";
-    const compositeBand = bandFromPct(rpsRaw);
 
     const rpsOrdinal = formatOrdinal(rpsRaw);
     const rpsContextLine = (() => {
@@ -319,10 +353,10 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     const summaryMetrics: SummaryMetric[] = [
       {
         label: "SGI tier",
-        value: compositeBand,
-        description: `Overall SGI tier from cohort-relative standing (SGI ${sgi.toFixed(
+        value: overallApsBand,
+        description: `Performance tier from APS category rollups (bands), with headline SGI ${sgi.toFixed(
           1,
-        )}). ${
+        )} from cohort-based RPS. ${
           prevMk === undefined
             ? "Only one calendar month with sessions in the extract."
             : `Latest active month averaged SGI ${clampDisplayedScore(currentMonthMean).toFixed(1)} vs ${clampDisplayedScore(priorMonthMean).toFixed(1)} prior month.`
@@ -346,7 +380,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     const sortedMonthKeys = [...byMonth.keys()].sort();
     const progressPoints: ProgressPoint[] = sortedMonthKeys.map((mk) => {
       const list = byMonth.get(mk) ?? [];
-      const mRps = list.reduce((s, x) => s + x.cohortPercentile, 0) / list.length;
+      const mRps = meanRps(list);
       return {
         label: monthLabelFromKeyUtc(mk),
         rps: Math.round(clampDisplayedScore(mRps) * 10) / 10,
@@ -361,7 +395,10 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
           if (mapped !== ability) continue;
           const mk = monthKeyUtc(r.sessionDate);
           const existing = bySkillMonth.get(mk) ?? [];
-          existing.push(clampDisplayedScore(r.cohortPercentile));
+          const rv = scoring.rowRpsCohortByIndex[rowIx(r)];
+          if (rv !== null && rv !== undefined && Number.isFinite(rv)) {
+            existing.push(clampDisplayedScore(rv));
+          }
           bySkillMonth.set(mk, existing);
         }
         const points: SkillProgressPoint[] = [...bySkillMonth.entries()]
@@ -377,7 +414,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     );
 
     const cohortPeers = aggs.filter((x) => x.cohortKey === a.cohortKey);
-    const peerScores = cohortPeers.map((p) => p.composite);
+    const peerScores = cohortPeers.map((p) => scoring.overallCohortRpsByPlayer.get(p.key) ?? 30);
     const binCounts = new Map<number, number>();
     for (const s of peerScores) {
       const sgiScore = clampDisplayedScore(s);
@@ -402,17 +439,25 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       const prev = sorted[1];
       const ability = mapAssessmentToAbility(cur.category, cur.drill);
       if (!ability) continue;
-      const currentSgi = clampDisplayedScore(cur.cohortPercentile);
-      const previousSgi = prev ? clampDisplayedScore(prev.cohortPercentile) : currentSgi;
+      const assessRps =
+        snapshotAssessmentRps(scoring, a.key, cur.category, cur.drill) ?? overallCohortRps;
+      const currentSgi = clampDisplayedScore(assessRps);
+      const prevRps = prev
+        ? snapshotAssessmentRps(scoring, a.key, prev.category, prev.drill) ?? currentSgi
+        : currentSgi;
+      const previousSgi = clampDisplayedScore(prevRps);
       const delta = prev ? currentSgi - previousSgi : 0;
       const dir: TrendDirection = !prev ? "flat" : Math.abs(delta) < 0.5 ? "flat" : delta > 0 ? "up" : "down";
+      const wa = snapshotWeightedAps(scoring, a.key, cur.category, cur.drill);
+      const performanceBand = wa?.band ?? ("Foundation" as PerformanceBand);
+      const drillAps = wa ? Math.round(wa.weightedAps * 10) / 10 : 0;
       assessmentRows.push({
         assessmentName: `${cur.category} ${cur.drill}`,
         ability,
-        apsScore: Math.round(currentSgi),
+        apsScore: drillAps,
         rpsScore: Math.round(currentSgi),
         percentile: Math.round(currentSgi),
-        performanceBand: bandFromPct(cur.cohortPercentile),
+        performanceBand,
         changeText: prev ? getScoreChange(currentSgi, previousSgi) : "First record",
         changeDirection: dir,
         latestSessionLabel: `Latest: ${cur.isoDate}`,
@@ -421,11 +466,12 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
         date: isoDayUtc(cur.sessionDate),
         assessmentName: `${cur.category} ${cur.drill}`,
         ability,
-        score: Math.round(currentSgi),
-        tier: bandFromPct(cur.cohortPercentile),
+        sgiScore: Math.round(currentSgi * 10) / 10,
+        apsScore: drillAps,
+        tier: performanceBand,
       });
     }
-    assessmentRows.sort((a, b) => b.apsScore - a.apsScore);
+    assessmentRows.sort((a, b) => b.rpsScore - a.rpsScore);
     assessmentHistory.sort((a, b) => b.date.localeCompare(a.date));
 
     const testsByAbility = new Map<AbilityName, AssessmentRow[]>();
@@ -437,12 +483,14 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
 
     const abilityBreakdown = ABILITY_ORDER.map((ability) => {
       const tests = testsByAbility.get(ability) ?? [];
-      const avgAps =
-        tests.length === 0 ? 0 : tests.reduce((s, t) => s + t.apsScore, 0) / tests.length;
+      const categoryAps = snapshotCategoryApsScore(scoring, a.key, ability) ?? 0;
+      const aggregateBand =
+        snapshotCategoryBand(scoring, a.key, ability) ??
+        ("Foundation" as PerformanceBand);
       return {
         ability,
-        avgAps: Math.round(avgAps * 10) / 10,
-        aggregateBand: tests.length === 0 ? ("Foundation" as PerformanceBand) : bandFromPct(avgAps),
+        avgAps: Math.round(categoryAps * 10) / 10,
+        aggregateBand,
         tests: [...tests].sort((x, y) => y.apsScore - x.apsScore),
       };
     });
@@ -451,7 +499,9 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     for (const r of rows) {
       const ability = mapAssessmentToAbility(r.category, r.drill);
       if (!ability) continue;
-      byCat.set(ability, [...(byCat.get(ability) ?? []), clampDisplayedScore(r.cohortPercentile)]);
+      const rv = scoring.rowRpsCohortByIndex[rowIx(r)];
+      if (rv === null || rv === undefined || !Number.isFinite(rv)) continue;
+      byCat.set(ability, [...(byCat.get(ability) ?? []), clampDisplayedScore(rv)]);
     }
     const catMeans = [...byCat.entries()].map(([cat, pcts]) => ({
       cat,

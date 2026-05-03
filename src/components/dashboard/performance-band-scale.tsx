@@ -1,4 +1,4 @@
-import { bandColorMap, bandOrder, bandTextMap, clampDisplayedScore } from "../../lib/dashboard-helpers";
+import { bandColorMap, bandOrder, bandTextMap } from "../../lib/dashboard-helpers";
 import { cn } from "../../lib/utils";
 
 type PerformanceBandScaleProps = {
@@ -18,7 +18,9 @@ export function PerformanceBandScale({
   apsScore,
   performanceBand,
 }: PerformanceBandScaleProps) {
-  const markerPosition = `${Math.max(0, Math.min(100, clampDisplayedScore(apsScore)))}%`;
+  /** 0–100 APS scale aligned with tier segment widths below (not SGI/RPS 30–99). */
+  const apsClamp = Number.isFinite(apsScore) ? Math.max(0, Math.min(100, apsScore)) : 0;
+  const markerPosition = `${apsClamp}%`;
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">

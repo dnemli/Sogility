@@ -97,7 +97,10 @@ export type AssessmentHistoryItem = {
   date: string;
   assessmentName: string;
   ability: AbilityName;
-  score: number;
+  /** Cohort sigmoid RPS / SGI (30–99) — headline trend metric; not paired with APS tier bands. */
+  sgiScore: number;
+  /** Weighted APS 0–100 — pairs with `tier` band. */
+  apsScore: number;
   tier: PerformanceBand;
 };
 

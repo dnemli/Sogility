@@ -42,6 +42,19 @@ export function getTier(score: number): ScoreTier {
   return "Elite";
 }
 
+/**
+ * APS 0–100 band thresholds from Analysis/final_aps.py `assign_aps_band`
+ * (differs from `getTier` at the 30 boundary: APS uses strict `< 30` for Foundation).
+ */
+export function performanceBandFromAps(score: number): ScoreTier {
+  if (!Number.isFinite(score)) return "Foundation";
+  if (score < 30) return "Foundation";
+  if (score < 50) return "Developing";
+  if (score < 70) return "Approaching";
+  if (score < 90) return "Strong";
+  return "Elite";
+}
+
 export function getTierColor(score: number): string {
   return bandColorMap[getTier(score)];
 }

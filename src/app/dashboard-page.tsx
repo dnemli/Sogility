@@ -671,9 +671,13 @@ function ParentPlayerFlow({
                               {entry.tier}
                             </span>
                           </div>
-                          <div className="mt-2 flex items-center justify-between text-xs">
-                            <span className="text-[#9AB0C0]">{entry.ability}</span>
-                            <span className="font-semibold text-[#E0E8F0]">{entry.score.toFixed(1)}</span>
+                          <div className="mt-2 flex flex-col gap-1 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[#9AB0C0]">{entry.ability}</span>
+                              <span className="font-semibold text-[#E0E8F0]">
+                                SGI {entry.sgiScore.toFixed(1)} · APS {entry.apsScore.toFixed(1)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -685,7 +689,8 @@ function ParentPlayerFlow({
                           <th className="px-3 py-2">Date</th>
                           <th className="px-3 py-2">Assessment</th>
                           <th className="px-3 py-2">Skill</th>
-                          <th className="px-3 py-2">Score</th>
+                          <th className="px-3 py-2">SGI</th>
+                          <th className="px-3 py-2">APS</th>
                           <th className="px-3 py-2">Tier</th>
                         </tr>
                       </thead>
@@ -695,7 +700,8 @@ function ParentPlayerFlow({
                             <td className="px-3 py-2 text-[#9AB0C0]">{entry.date}</td>
                             <td className="px-3 py-2 text-[#E0E8F0]">{entry.assessmentName}</td>
                             <td className="px-3 py-2 text-[#9AB0C0]">{entry.ability}</td>
-                            <td className="px-3 py-2 font-semibold text-[#E0E8F0]">{entry.score.toFixed(1)}</td>
+                            <td className="px-3 py-2 font-semibold text-[#E0E8F0]">{entry.sgiScore.toFixed(1)}</td>
+                            <td className="px-3 py-2 font-semibold text-[#E0E8F0]">{entry.apsScore.toFixed(1)}</td>
                             <td className="px-3 py-2">
                               <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", bandTextMap[entry.tier])}>
                                 {entry.tier}
