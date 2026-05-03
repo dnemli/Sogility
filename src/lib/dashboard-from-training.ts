@@ -54,7 +54,6 @@ function archetypeMixFromVector(v: number[]): Record<(typeof ARCHETYPE_COLS)[num
   };
 }
 
-/** Matches Analysis/cluster.py: for each cluster index in order, take highest archetype score not yet used. */
 function recommendationsForArchetype(primary: string): string {
   switch (primary) {
     case "Playmaker":
@@ -70,24 +69,20 @@ function recommendationsForArchetype(primary: string): string {
   }
 }
 
-function assignClusterArchetypes(centers: number[][]): string[] {
-  const k = centers.length;
-  const names: string[] = [];
-  const used = new Set<string>();
-  for (let i = 0; i < k; i++) {
-    const mix = archetypeMixFromVector(centers[i]!);
-    const entries = ARCHETYPE_COLS.map((label) => ({ label, score: mix[label] })).sort((a, b) => b.score - a.score);
-    const pick = entries.find((e) => !used.has(e.label));
-    if (pick) {
-      names.push(pick.label);
-      used.add(pick.label);
-    } else {
-      const fallback = ARCHETYPE_COLS.find((a) => !used.has(a)) ?? "Playmaker";
-      names.push(fallback);
-      used.add(fallback);
+/** Deterministic label from the linear archetype scores (stable tie-break: ARCHETYPE_COLS order). */
+function fixedArchetypeFromSkillVector(v: number[]): (typeof ARCHETYPE_COLS)[number] {
+  const mix = archetypeMixFromVector(v);
+  let best: (typeof ARCHETYPE_COLS)[number] = ARCHETYPE_COLS[0]!;
+  let bestScore = mix[best];
+  for (let i = 1; i < ARCHETYPE_COLS.length; i++) {
+    const label = ARCHETYPE_COLS[i]!;
+    const s = mix[label];
+    if (s > bestScore) {
+      bestScore = s;
+      best = label;
     }
   }
-  return names;
+  return best;
 }
 
 function formatOrdinal(n: number): string {
@@ -205,7 +200,7 @@ function buildArchetypeLayout(
   const scaledPlayers = scaledAll.slice(0, n);
   const scaledCenters = scaledAll.slice(n);
 
-  const clusterNames = assignClusterArchetypes(km.centers);
+  const clusterNames = km.centers.map((ctr) => fixedArchetypeFromSkillVector(ctr));
 
   const clusters = clusterNames.map((label, c) => {
     const pts = scaledPlayers.filter((_, i) => km.labels[i] === c);
@@ -230,8 +225,7 @@ function buildArchetypeLayout(
   for (let i = 0; i < n; i++) {
     const a = aggs[i]!;
     const pk = a.key;
-    const ci = km.labels[i] ?? 0;
-    const primary = clusterNames[ci] ?? "Playmaker";
+    const primary = fixedArchetypeFromSkillVector(X[i]!);
     const pos = scaledPlayers[i]!;
     const vec = X[i]!;
 

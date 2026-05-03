@@ -14,7 +14,6 @@ import { KpiSection } from "../components/dashboard/kpi-section";
 import { ProgressTrendChart } from "../components/dashboard/progress-trend-chart";
 import { DistributionChart } from "../components/dashboard/distribution-chart";
 import { AssessmentBreakdown } from "../components/dashboard/assessment-breakdown";
-import { ArchetypeInsightCard } from "../components/dashboard/archetype-insight-card";
 import { SurfaceCard } from "../components/ui/card";
 import { dashboardCollection } from "../data/training-data";
 import { cn } from "../lib/utils";
@@ -409,13 +408,12 @@ function TrainerFlow({
               ) : null}
 
               {trainerPlayerTab === "Abilities" ? (
-                <section className={cn("grid gap-4", isPhoneView ? "grid-cols-1" : "xl:grid-cols-[1.45fr_0.95fr]")}>
+                <section className="grid grid-cols-1 gap-4">
                   <AssessmentBreakdown
                     abilities={currentPlayer.abilityBreakdown}
                     playerName={currentPlayer.profile.playerName}
                     forceMobileLayout={isPhoneView}
                   />
-                  <ArchetypeInsightCard archetype={currentPlayer.archetype} forceMobileLayout={isPhoneView} />
                 </section>
               ) : null}
             </>
