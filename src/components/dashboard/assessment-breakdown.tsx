@@ -52,7 +52,7 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
                     type="button"
                     onClick={() => toggle(key)}
                     className={cn(
-                      "grid w-full gap-3 px-4 py-4 text-left transition hover:bg-[#131F2E] sm:gap-4 sm:px-5 sm:py-5",
+                      "grid w-full gap-2 px-4 py-3 text-left transition hover:bg-[#131F2E] sm:gap-3 sm:px-5 sm:py-4",
                       forceMobileLayout ? "grid-cols-1" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)] lg:items-start",
                     )}
                   >
@@ -65,32 +65,24 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
                       />
                       <div>
                         <p className="text-sm font-semibold text-[#E0E8F0] sm:text-base">{row.ability}</p>
-                        <p className="mt-1 text-xs text-[#9AB0C0] sm:text-sm">
-                          {hasTests ? (
-                            <>
-                              {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg score{" "}
-                              {row.avgAps.toFixed(1)}
-                            </>
-                          ) : (
-                            <>No tests on record yet</>
-                          )}
-                        </p>
+                        {hasTests ? (
+                          <p className="mt-0.5 text-xs text-[#9AB0C0] sm:text-sm">
+                            {row.tests.length} assessment{row.tests.length === 1 ? "" : "s"} · avg score{" "}
+                            {row.avgAps.toFixed(1)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
-                    <div className="pl-0 lg:pl-0">
+                    <div className="min-w-0 pl-0 pt-0.5 lg:pl-0">
                       {hasTests ? (
-                        <>
-                          <PerformanceBandScale apsScore={row.avgAps} performanceBand={row.aggregateBand} />
-                          <p className="mt-2 text-xs text-[#9AB0C0]">Aggregate across assessments in this skill</p>
-                        </>
+                        <PerformanceBandScale apsScore={row.avgAps} performanceBand={row.aggregateBand} />
                       ) : (
-                        <div className="rounded-2xl border border-[#1E2D40] bg-[#131F2E] px-4 py-3">
-                          <p className="text-sm font-semibold text-[#E0E8F0]">
-                            Take these assessments to see your {row.ability} ability!
+                        <div className="rounded-2xl border border-[#1E2D40] bg-[#131F2E] px-3 py-2.5">
+                          <p className="text-sm font-semibold leading-snug text-[#E0E8F0]">
+                            No {row.ability} assessment recorded
                           </p>
-                          <p className="mt-1.5 text-xs leading-relaxed text-[#9AB0C0]">
-                            Complete any of the mapped drills below—your benchmark will appear once session data
-                            exists for this ability.
+                          <p className="mt-1 text-xs leading-relaxed text-[#9AB0C0]">
+                            Score one of the mapped drills below to start tracking this skill.
                           </p>
                         </div>
                       )}
@@ -109,7 +101,7 @@ export function AssessmentBreakdown({ abilities, playerName, forceMobileLayout =
                               <div
                                 key={t.assessmentName}
                                 className={cn(
-                                  "grid gap-3 rounded-2xl border border-[#1E2D40] bg-[#0F2236] p-3 sm:gap-4 sm:p-4",
+                                  "grid min-w-0 gap-2 rounded-2xl border border-[#1E2D40] bg-[#0F2236] p-3 sm:gap-3 sm:p-4",
                                   forceMobileLayout ? "grid-cols-1" : "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]",
                                 )}
                               >

@@ -30,11 +30,14 @@ function getTierKey(score: number, tierLabel: string): ScoreTier {
   return getTier(score);
 }
 
-export function SkillBar({ name, score, tier, min = 30, max = 99 }: SkillBarProps) {
-  const clamped = Math.max(min, Math.min(max, score));
-  const visualPercent = Math.max(0, Math.min(100, score));
+/** Bar spans 0–100 (percentile-style scores); marker uses the same clamped value as the label (not raw vs display mismatch). */
+export function SkillBar({ name, score, tier, min = 0, max = 100 }: SkillBarProps) {
+  const safe = Number.isFinite(score) ? score : min;
+  const clamped = Math.max(min, Math.min(max, safe));
+  const span = Math.max(max - min, 1e-6);
+  const visualPercent = ((clamped - min) / span) * 100;
   const tierKey = getTierKey(clamped, tier);
-  const markerPosition = `${visualPercent}%`;
+  const markerPosition = `${Math.max(0, Math.min(100, visualPercent))}%`;
 
   return (
     <div className="space-y-2 rounded-xl border border-[#1E2D40] bg-[#131F2E] p-3">

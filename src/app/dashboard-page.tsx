@@ -84,6 +84,27 @@ function parseIsoDate(value: string): Date {
   return new Date(`${value}T00:00:00`);
 }
 
+/** True when the extract has at least one drill row mapped to an academy ability (same as trainer breakdown). */
+function hasMappedAssessmentScores(player: PlayerDashboardView): boolean {
+  return player.assessmentHistory.length > 0;
+}
+
+function EmptyAbilitySkillPrompt({ ability }: { ability: string }) {
+  return (
+    <div className="space-y-2 rounded-xl border border-[#1E2D40] bg-[#131F2E] p-3">
+      <span className="text-[13px] font-medium text-[#E0E8F0]">{ability}</span>
+      <div className="rounded-2xl border border-[#1E2D40] bg-[#0F2236] px-4 py-3">
+        <p className="text-sm font-semibold text-[#E0E8F0]">
+          Take these assessments to see your {ability} ability!
+        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-[#9AB0C0]">
+          Your score will appear here after a related session is recorded.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function TrainerFlow({
   isPhoneView,
   selectedPlayerId,
@@ -417,7 +438,8 @@ function ParentPlayerFlow({
     currentPlayer.summaryMetrics.find((metric) => metric.label === "Overall SGI")?.value ?? "—";
   const overallTier =
     currentPlayer.summaryMetrics.find((metric) => metric.label === "SGI tier")?.value ?? "—";
-  const lastUpdated = currentPlayer.assessmentHistory[0]?.date ?? "No assessment date available";
+  const lastUpdated = currentPlayer.assessmentHistory[0]?.date ?? "No assessments yet";
+  const hasScores = hasMappedAssessmentScores(currentPlayer);
   const selectedSkillProgress = currentPlayer.skillProgress[selectedSkill] ?? [];
 
   return (
@@ -467,17 +489,31 @@ function ParentPlayerFlow({
                 description={`${currentPlayer.profile.ageGroup} · ${currentPlayer.profile.gender}`}
               />
               <div className="mt-4 flex flex-col items-center gap-2.5">
-                <ScoreRing score={Number(overallSgi)} size={148} label="Score" />
-                <span
-                  className={cn(
-                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                    overallTier in bandTextMap
-                      ? bandTextMap[overallTier as keyof typeof bandTextMap]
-                      : "bg-[#1E2D40] text-[#9AB0C0]",
-                  )}
-                >
-                  {overallTier}
-                </span>
+                {hasScores ? (
+                  <>
+                    <ScoreRing score={Number(overallSgi)} size={148} label="Score" />
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                        overallTier in bandTextMap
+                          ? bandTextMap[overallTier as keyof typeof bandTextMap]
+                          : "bg-[#1E2D40] text-[#9AB0C0]",
+                      )}
+                    >
+                      {overallTier}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex w-full flex-col items-center rounded-2xl border border-[#1E2D40] bg-[#0F2236] px-4 py-6 text-center">
+                    <p className="text-sm font-semibold text-[#E0E8F0]">
+                      Take assessments to see your score
+                    </p>
+                    <p className="mt-2 max-w-[300px] text-xs leading-relaxed text-[#9AB0C0]">
+                      After your coach records session assessments mapped to academy skills, your overall score appears
+                      here instead of a placeholder number.
+                    </p>
+                  </div>
+                )}
                 <span className="inline-flex rounded-full bg-[#1E2D40] px-3 py-1 text-xs font-medium text-[#9AB0C0]">
                   Last updated: {lastUpdated}
                 </span>
@@ -489,9 +525,17 @@ function ParentPlayerFlow({
               <div className="mt-4 grid gap-3">
                 {(["Passing", "Vision", "Dribbling", "Agility", "First Touch"] as const).map((skill) => {
                   const row = currentPlayer.abilityBreakdown.find((entry) => entry.ability === skill);
-                  const score = row?.avgAps ?? 30;
-                  const tier = row?.aggregateBand ?? "Foundation";
-                  return <SkillBar key={skill} name={skill} score={score} tier={tier} />;
+                  if (!row?.tests.length) {
+                    return <EmptyAbilitySkillPrompt key={skill} ability={skill} />;
+                  }
+                  return (
+                    <SkillBar
+                      key={skill}
+                      name={skill}
+                      score={row.avgAps}
+                      tier={row.aggregateBand}
+                    />
+                  );
                 })}
               </div>
             </SurfaceCard>

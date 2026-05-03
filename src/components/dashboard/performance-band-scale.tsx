@@ -21,9 +21,8 @@ export function PerformanceBandScale({
   const markerPosition = `${Math.max(0, Math.min(100, clampDisplayedScore(apsScore)))}%`;
 
   return (
-    <div className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-        <p className="text-xs font-medium text-[#9AB0C0] sm:text-sm">Score tier</p>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex justify-end">
         <span
           className={cn(
             "w-fit shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:px-2.5 sm:py-1 sm:text-xs",
