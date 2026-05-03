@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import { SurfaceCard } from "../ui/card";
 import type { PlayerDashboardView, TrainerSavedAssessment } from "../../types/dashboard";
 import {
@@ -41,6 +41,10 @@ export function TrainerNewAssessmentForm({
   onCancel,
 }: TrainerNewAssessmentFormProps) {
   const [playerId, setPlayerId] = useState<string>(presetPlayerId ?? "");
+  const [playerQuery, setPlayerQuery] = useState<string>("");
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [playerActiveIdx, setPlayerActiveIdx] = useState(-1);
+  const playerComboRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState<AssessmentCategory | "">("");
   const [equipment, setEquipment] = useState<string>("");
   const [drillId, setDrillId] = useState<string>("");
@@ -105,6 +109,46 @@ export function TrainerNewAssessmentForm({
   };
 
   const selectedPlayer = players.find((p) => p.id === playerId);
+  const filteredPlayers = useMemo(() => {
+    const q = playerQuery.trim().toLowerCase();
+    if (!q) return players;
+    return players.filter((p) => p.profile.playerName.toLowerCase().includes(q));
+  }, [players, playerQuery]);
+
+  useEffect(() => {
+    setPlayerActiveIdx(-1);
+  }, [playerQuery]);
+
+  useEffect(() => {
+    const close = (ev: MouseEvent | TouchEvent) => {
+      const el = playerComboRef.current;
+      if (!el || !(ev.target instanceof Node)) return;
+      if (!el.contains(ev.target)) setPlayerOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("touchstart", close);
+    };
+  }, []);
+
+  const choosePlayer = (p: PlayerDashboardView) => {
+    setPlayerId(p.id);
+    setPlayerQuery(p.profile.playerName);
+    setPlayerOpen(false);
+    setPlayerActiveIdx(-1);
+  };
+
+  const onPlayerSearchChange = (next: string) => {
+    setPlayerQuery(next);
+    setPlayerOpen(true);
+    const sel = players.find((x) => x.id === playerId);
+    if (sel && sel.profile.playerName.trim().toLowerCase() !== next.trim().toLowerCase()) {
+      setPlayerId("");
+    }
+  };
+
   const canSave =
     Boolean(playerId) &&
     Boolean(selectedDrill) &&
@@ -170,20 +214,106 @@ export function TrainerNewAssessmentForm({
             </div>
           ) : (
             <>
-              <select
-                id="na-player"
-                value={playerId}
-                onChange={(e) => setPlayerId(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">Select a player…</option>
-                {players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.profile.playerName}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-[#9AB0C0]">Choose who this assessment is for.</p>
+              <div ref={playerComboRef} className="relative">
+                <div className="relative">
+                  <input
+                    id="na-player"
+                    type="text"
+                    role="combobox"
+                    aria-expanded={playerOpen}
+                    aria-controls="na-player-listbox"
+                    aria-autocomplete="list"
+                    aria-activedescendant={
+                      playerOpen && playerActiveIdx >= 0 && filteredPlayers[playerActiveIdx]
+                        ? `na-player-opt-${filteredPlayers[playerActiveIdx]!.id}`
+                        : undefined
+                    }
+                    value={playerQuery}
+                    onChange={(e) => onPlayerSearchChange(e.target.value)}
+                    onFocus={() => setPlayerOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setPlayerOpen(false);
+                        return;
+                      }
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setPlayerOpen(true);
+                        setPlayerActiveIdx((i) => {
+                          const max = filteredPlayers.length - 1;
+                          if (max < 0) return -1;
+                          return i < 0 ? 0 : Math.min(i + 1, max);
+                        });
+                        return;
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setPlayerActiveIdx((i) => {
+                          const max = filteredPlayers.length - 1;
+                          if (max < 0) return -1;
+                          if (i < 0) return max;
+                          return Math.max(i - 1, 0);
+                        });
+                        return;
+                      }
+                      if (e.key === "Enter") {
+                        if (playerOpen && playerActiveIdx >= 0) {
+                          const p = filteredPlayers[playerActiveIdx];
+                          if (p) {
+                            e.preventDefault();
+                            choosePlayer(p);
+                          }
+                        }
+                      }
+                    }}
+                    placeholder="Type or choose a player…"
+                    autoComplete="off"
+                    className={cn(selectClass, "cursor-text pr-10")}
+                  />
+                  <ChevronDown
+                    size={18}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#6A8090]"
+                    aria-hidden
+                  />
+                </div>
+                {playerOpen ? (
+                  <ul
+                    id="na-player-listbox"
+                    role="listbox"
+                    className="absolute left-0 right-0 z-50 mt-1 max-h-56 list-none overflow-auto rounded-xl border border-[#1E2D40] bg-[#0F2236] py-1 shadow-lg"
+                  >
+                    {filteredPlayers.length === 0 ? (
+                      <li className="list-none px-3 py-2.5 text-sm text-[#6A8090]" aria-live="polite">
+                        No players match “{playerQuery.trim() || "…"}”.
+                      </li>
+                    ) : (
+                      filteredPlayers.map((p, i) => (
+                        <li
+                          key={p.id}
+                          id={`na-player-opt-${p.id}`}
+                          role="option"
+                          aria-selected={playerId === p.id}
+                          className={cn(
+                            "cursor-pointer px-3 py-2 text-sm font-medium text-[#E0E8F0] hover:bg-[#131F2E]",
+                            i === playerActiveIdx ? "bg-[#131F2E]" : "",
+                            playerId === p.id ? "text-[#3ECF8E]" : "",
+                          )}
+                          onMouseEnter={() => setPlayerActiveIdx(i)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            choosePlayer(p);
+                          }}
+                        >
+                          {p.profile.playerName}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                ) : null}
+              </div>
+              <p className="text-xs text-[#9AB0C0]">
+                Type to filter players; click a row or use arrow keys and Enter.
+              </p>
             </>
           )}
         </div>
