@@ -18,6 +18,7 @@ import { clampDisplayedScore, getScoreChange } from "./dashboard-helpers";
 import type { TrainingSessionRowEnriched } from "./training-cohort-percentiles";
 import {
   buildTrainingScoringSnapshot,
+  scoringPlayerKey,
   snapshotAssessmentRps,
   snapshotCategoryApsScore,
   snapshotCategoryBand,
@@ -272,7 +273,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     if (rows.length < 1) continue;
     const latestRow = rows.reduce((a, b) => (a.sessionDate >= b.sessionDate ? a : b));
     const cohortKey = `${latestRow.ageLetter}|${latestRow.genderRaw}`;
-    const overallRps = scoring.overallCohortRpsByPlayer.get(key);
+    const overallRps = scoring.overallCohortRpsByPlayer.get(scoringPlayerKey(latestRow));
     const composite = Number.isFinite(overallRps) ? overallRps! : 30;
     aggs.push({ key, rows, composite, cohortKey });
     cohortOverallRps.set(cohortKey, [...(cohortOverallRps.get(cohortKey) ?? []), composite]);
@@ -291,6 +292,7 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
   const players: PlayerDashboardView[] = aggs.map((a) => {
     const rows = [...a.rows].sort((x, y) => x.sessionDate.getTime() - y.sessionDate.getTime());
     const latest = rows[rows.length - 1]!;
+    const latestSpk = scoringPlayerKey(latest);
     const ageGroupLabel = tierLetterToAgeGroupLabel(latest.ageLetter);
     const genderLabel = latest.genderRaw === "female" ? "Female" : "Male";
     const profile = {
@@ -302,9 +304,9 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     };
 
     const rpsRaw = cohortPercentileRank.get(a.key) ?? 0;
-    const overallCohortRps = scoring.overallCohortRpsByPlayer.get(a.key) ?? 30;
+    const overallCohortRps = scoring.overallCohortRpsByPlayer.get(latestSpk) ?? 30;
     const sgi = clampDisplayedScore(overallCohortRps);
-    const overallApsBand = scoring.finalApsByPlayer.get(a.key)?.band ?? ("Foundation" as PerformanceBand);
+    const overallApsBand = scoring.finalApsByPlayer.get(latestSpk)?.band ?? ("Foundation" as PerformanceBand);
 
     const byMonth = new Map<string, TrainingSessionRowEnriched[]>();
     for (const r of rows) {
@@ -414,7 +416,10 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
     );
 
     const cohortPeers = aggs.filter((x) => x.cohortKey === a.cohortKey);
-    const peerScores = cohortPeers.map((p) => scoring.overallCohortRpsByPlayer.get(p.key) ?? 30);
+    const peerScores = cohortPeers.map((p) => {
+      const lr = p.rows.reduce((x, y) => (x.sessionDate >= y.sessionDate ? x : y));
+      return scoring.overallCohortRpsByPlayer.get(scoringPlayerKey(lr)) ?? 30;
+    });
     const binCounts = new Map<number, number>();
     for (const s of peerScores) {
       const sgiScore = clampDisplayedScore(s);
@@ -440,15 +445,15 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
       const ability = mapAssessmentToAbility(cur.category, cur.drill);
       if (!ability) continue;
       const assessRps =
-        snapshotAssessmentRps(scoring, a.key, cur.category, cur.drill) ?? overallCohortRps;
+        snapshotAssessmentRps(scoring, scoringPlayerKey(cur), cur.category, cur.drill) ?? overallCohortRps;
       const currentSgi = clampDisplayedScore(assessRps);
       const prevRps = prev
-        ? snapshotAssessmentRps(scoring, a.key, prev.category, prev.drill) ?? currentSgi
+        ? snapshotAssessmentRps(scoring, scoringPlayerKey(prev), prev.category, prev.drill) ?? currentSgi
         : currentSgi;
       const previousSgi = clampDisplayedScore(prevRps);
       const delta = prev ? currentSgi - previousSgi : 0;
       const dir: TrendDirection = !prev ? "flat" : Math.abs(delta) < 0.5 ? "flat" : delta > 0 ? "up" : "down";
-      const wa = snapshotWeightedAps(scoring, a.key, cur.category, cur.drill);
+      const wa = snapshotWeightedAps(scoring, scoringPlayerKey(cur), cur.category, cur.drill);
       const performanceBand = wa?.band ?? ("Foundation" as PerformanceBand);
       const drillAps = wa ? Math.round(wa.weightedAps * 10) / 10 : 0;
       assessmentRows.push({
@@ -483,9 +488,9 @@ export function buildDashboardCollectionFromTraining(allRows: TrainingSessionRow
 
     const abilityBreakdown = ABILITY_ORDER.map((ability) => {
       const tests = testsByAbility.get(ability) ?? [];
-      const categoryAps = snapshotCategoryApsScore(scoring, a.key, ability) ?? 0;
+      const categoryAps = snapshotCategoryApsScore(scoring, latestSpk, ability) ?? 0;
       const aggregateBand =
-        snapshotCategoryBand(scoring, a.key, ability) ??
+        snapshotCategoryBand(scoring, latestSpk, ability) ??
         ("Foundation" as PerformanceBand);
       return {
         ability,

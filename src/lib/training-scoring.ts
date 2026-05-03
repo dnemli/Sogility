@@ -25,6 +25,16 @@ export function pythonAgeGroupFromLetter(letter: string): 1 | 2 | 3 {
   return 3;
 }
 
+/**
+ * Player identity for APS + sigmoid groupbys — matches both notebooks’ `player_cols`
+ * (first/last/gender + numeric `age_group`), not the UI `playerKey` (name + gender only).
+ */
+export function scoringPlayerKey(
+  r: Pick<TrainingSessionRow, "firstName" | "lastName" | "genderRaw" | "ageLetter">,
+): string {
+  return `${playerKey(r)}|${pythonAgeGroupFromLetter(r.ageLetter)}`;
+}
+
 function genderMF(g: TrainingSessionRow["genderRaw"]): "M" | "F" {
   return g === "female" ? "F" : "M";
 }
@@ -234,7 +244,7 @@ function toInternalRows(rows: TrainingSessionRow[]): InternalRow[] {
     const higherIsBetter = HIGHER_IS_BETTER[categoryAssessment] ?? DEFAULT_HIGHER_IS_BETTER;
     return {
       ix,
-      pk: playerKey(r),
+      pk: scoringPlayerKey(r),
       categoryAssessment,
       ageGroup,
       cohort,
@@ -409,10 +419,49 @@ function buildApsOutputs(internal: InternalRow[]) {
 }
 
 function buildSigmoidOutputs(internal: InternalRow[]) {
+  const SIGMOID_SKILL_TYPE_MAP: Record<string, "Log" | "Normal"> = {
+    "Circuit Training Knockout": "Log",
+    "Circuit Training Knockout-Obstacle": "Log",
+    "Freelap-10yd Dash": "Log",
+    "Freelap-10yd Dash Ball": "Log",
+    "Freelap-20yd Dash": "Log",
+    "Freelap-20yd Dash Ball": "Log",
+    "RoxPro 5-10-5 shuttle": "Log",
+    "RoxPro Sprint-10 yrd": "Log",
+  };
+  const SIGMOID_GOOD_DIRECTION_MAP: Record<string, "Lo" | "Hi"> = {
+    "Circuit Training Knockout": "Lo",
+    "Circuit Training Knockout-Obstacle": "Lo",
+    "Freelap-10yd Dash": "Lo",
+    "Freelap-10yd Dash Ball": "Lo",
+    "Freelap-20yd Dash": "Lo",
+    "Freelap-20yd Dash Ball": "Lo",
+    "Broad Jump-5-10-5 Shuttles": "Lo",
+    "RoxPro 5-10-5 shuttle": "Lo",
+    "RoxPro Sprint-10 yrd": "Lo",
+  };
   const skillCol = (r: InternalRow) => r.categoryAssessment;
-  const data = internal.filter((r) => Number.isFinite(r.scoreForModel));
 
-  const scoreOriented = (r: InternalRow) => (r.higherIsBetter ? r.scoreForModel : -r.scoreForModel);
+  const safeLog = (x: number): number => {
+    if (!Number.isFinite(x) || x <= 0) return NaN;
+    return Math.log(x);
+  };
+
+  type SigmoidRow = InternalRow & { scoreModel: number; scoreOriented: number };
+
+  const data: SigmoidRow[] = internal
+    .map((r) => {
+      const skillType = SIGMOID_SKILL_TYPE_MAP[r.categoryAssessment] ?? "Normal";
+      const goodDirection = SIGMOID_GOOD_DIRECTION_MAP[r.categoryAssessment] ?? "Hi";
+      const scoreModel = skillType === "Log" ? safeLog(r.scoreForModel) : r.scoreForModel;
+      const scoreOriented = goodDirection === "Lo" ? -scoreModel : scoreModel;
+      return {
+        ...r,
+        scoreModel,
+        scoreOriented,
+      };
+    })
+    .filter((r) => Number.isFinite(r.scoreModel) && Number.isFinite(r.scoreOriented));
 
   type GlobalRow = {
     skill: string;
@@ -420,7 +469,7 @@ function buildSigmoidOutputs(internal: InternalRow[]) {
     globalSpan: number;
   };
   const globalParams = new Map<string, GlobalRow>();
-  const bySkill = new Map<string, InternalRow[]>();
+  const bySkill = new Map<string, SigmoidRow[]>();
   for (const r of data) {
     const sk = skillCol(r);
     const arr = bySkill.get(sk) ?? [];
@@ -428,7 +477,7 @@ function buildSigmoidOutputs(internal: InternalRow[]) {
     bySkill.set(sk, arr);
   }
   for (const [skill, arr] of bySkill) {
-    const oriented = sortedValues(arr.map(scoreOriented));
+    const oriented = sortedValues(arr.map((x) => x.scoreOriented));
     if (!oriented.length) continue;
     const globalMid = quantile(oriented, 0.5);
     const globalSpan = quantile(oriented, SPAN_PERCENTILE);
@@ -443,7 +492,7 @@ function buildSigmoidOutputs(internal: InternalRow[]) {
     cohortSpanSmoothed: number;
   };
   const cohortParams = new Map<string, CohortRow>();
-  const bySkillCohort = new Map<string, InternalRow[]>();
+  const bySkillCohort = new Map<string, SigmoidRow[]>();
   for (const r of data) {
     const k = `${skillCol(r)}|||${r.cohort}`;
     const arr = bySkillCohort.get(k) ?? [];
@@ -454,7 +503,7 @@ function buildSigmoidOutputs(internal: InternalRow[]) {
     const [skill, cohort] = k.split("|||") as [string, string];
     const g = globalParams.get(skill);
     if (!g) continue;
-    const oriented = sortedValues(arr.map(scoreOriented));
+    const oriented = sortedValues(arr.map((x) => x.scoreOriented));
     const cohortN = oriented.length;
     const cohortMid = quantile(oriented, 0.5);
     const cohortSpan = quantile(oriented, SPAN_PERCENTILE);
@@ -503,13 +552,13 @@ function buildSigmoidOutputs(internal: InternalRow[]) {
     const ck = `${r.categoryAssessment}|||${r.cohort}`;
     const cp = cohortParams.get(ck);
     if (!g || !cp) continue;
-    const x = scoreOriented(r);
+    const x = r.scoreOriented;
     const rpsCohort = calculateRps(x, cp.cohortMidSmoothed, cp.cohortSpanSmoothed);
     if (Number.isFinite(rpsCohort)) rowRps.set(r.ix, rpsCohort);
   }
 
   const assessmentCohortRps = new Map<string, number>();
-  const groups = new Map<string, InternalRow[]>();
+  const groups = new Map<string, SigmoidRow[]>();
   for (const r of data) {
     const gk = `${r.pk}|||${r.categoryAssessment}`;
     const list = groups.get(gk) ?? [];
